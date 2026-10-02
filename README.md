@@ -59,4 +59,4 @@ para no tener que bajar 2 GB y reentrenar. Se regeneran con `npm run entrenar`.
 | `cpp/` | `class23` y `class24` en C++ y el entrenador que mide contra el azar |
 | `herramientas/` | Exportar rasgos, recortar COCO, entrenar, probar en vivo, hacer tarjetas QR |
 | `pruebas/` | Pruebas en frío: no necesitan el servidor |
-| `docs/` | El esquema de la base y los planos de las gafas |
+| `docs/` | El Word con la documentación, los planos de las gafas y el esquema de la base |

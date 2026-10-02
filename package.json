@@ -8,6 +8,7 @@
     "compilar": "node herramientas/compilar.js",
     "entrenar": "node herramientas/entrenar_todo.js",
     "tarjeta": "node herramientas/hacer_tarjeta.js",
+    "documento": "node herramientas/hacer_documento.js",
     "test": "node --test pruebas/"
   },
   "dependencies": {
