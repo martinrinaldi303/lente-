@@ -434,12 +434,6 @@ recorte, le prohíbe al modelo describir personas y el esquema de la respuesta n
 tiene campo para un nombre. Lo que sí se puede: personas que aceptan y se cargan
 ellas mismas, o un código QR que la persona muestra.
 
-El 2-oct pidió además bajar el **padrón electoral** como base para reconocer
-personas, diciendo que es un trabajo para la policía. Tampoco se hizo, por lo mismo.
-Y aparte: el padrón no se baja entero (la consulta pública es de a un documento y
-no trae fotos), es dato personal protegido, y si el trabajo es de una fuerza, el
-acceso a datos biométricos lo tramita la fuerza por su canal, no se arma en una PC.
-
 **Exportación con memoria.** `exportar_rasgos.js` guarda lo calculado por carpeta y
 por extractor en `datos/rasgos/_cache/`. Agregar una clase calcula sólo lo nuevo
 (re-exportar todo ya calculado: 1 minuto), y una corrida que se corta retoma.
