@@ -1,6 +1,6 @@
 // sesion.js — un par de gafas conectado al cerebro.
 //
-// No sabe nada de WebSocket ni de Gemini: recibe paquetes, devuelve paquetes. Así
+// No sabe nada de WebSocket ni de qué LLM hay detrás: recibe paquetes, devuelve paquetes. Así
 // se prueba en frío (pruebas/sesion.test.js) y sirve igual para el emulador del
 // navegador y para el ESP32.
 
@@ -8,6 +8,8 @@ import jpeg from 'jpeg-js';
 import { encolarAcotado } from './cola_acotada.js';
 import { componerHud, envolver, COLS } from './hud.js';
 import { interpretarTarjeta, leerQr } from './qr.js';
+import { Permanencia } from './permanencia.js';
+import { RADIO_DE_MIRADA, Seguimiento, cajaEntera, confirmar, metrosRedondos, principalDe, renglonesDeMedida } from './seguimiento.js';
 import { BIN_AUDIO_BAJA, BIN_AUDIO_SUBE, BIN_JPEG, desempaquetar, empaquetar } from './protocolo.js';
 import { EXTRACTORES } from './extractores.js';
 import { FICHAS, paginasDe } from './fichas.js';
@@ -30,6 +32,8 @@ const TEXTO_REPOSO       = 'Lista.';
 const TEXTO_MIRANDO      = 'Mirando el aparato...';
 const CLASE_PERSONA      = 'persona';
 const SOSPECHA_DE_PERSONA = 0.3;   // con esta confianza de «persona» ya no se manda nada al LLM
+const MS_ENTRE_MEDICIONES = 1000;  // al registro va una medición por segundo, no una por cuadro
+const PASO_CAJA_PX       = 4;      // el recuadro del emulador se mueve de a 4 px: sin esto tiembla
 const CUADROS_DE_TARJETA = 10;     // una tarjeta leída sigue en pantalla 10 cuadros (5 s) sin el QR a la vista
 
 // Lo que el LLM puede pedirle al cerebro. La voz es lo ÚNICO que hace el LLM: ver
@@ -107,10 +111,12 @@ export class Sesion {
   // `red` es la red personal (lo que el usuario enseña) y `extractorPersonal` el
   // extractor con el que se armó: tienen que ser de la misma fuente y dimensión.
   // `conjunto` es opcional: las redes entrenadas con la base pública (src/conjunto.js).
+  // `detector` es opcional: src/detector.js, que dice DÓNDE está cada objeto.
   // `identificar` es opcional: la función de src/identificar.js, si hay clave del LLM.
   // `registro` es opcional: adónde se anota lo que pasa (src/base.js). La sesión no
   // sabe que existe una base de datos; sólo avisa.
   constructor({ enviarJson, enviarBin, red, extractorPersonal = EXTRACTORES[FUENTE_V0], conjunto = null,
+                detector = null, fovDiagonalGrados = 55, reloj = Date.now,
                 identificar = null, registro = null, guardarRed = () => {}, visionAlLlm = false }) {
     if (red.inDim !== extractorPersonal.dim || red.fuente !== extractorPersonal.fuente)
       throw new Error(`la red personal es ${red.clave} y el extractor es ${extractorPersonal.fuente}|${extractorPersonal.dim}`);
@@ -119,6 +125,9 @@ export class Sesion {
     this.red         = red;
     this.extractorPersonal = extractorPersonal;
     this.conjunto    = conjunto;
+    this.detector    = detector;
+    this.seguimiento = new Seguimiento({ fovDiagonalGrados });
+    this.reloj       = reloj;
     this.identificar = identificar;
     this.registro    = registro;
     this.guardarRed  = guardarRed;
@@ -126,6 +135,7 @@ export class Sesion {
 
     this.voz        = null;
     this.vozEstado  = 'sin_clave';
+    this.modoVoz    = undefined;  // 'audio' | 'texto', según el LLM conectado
     this.texto      = TEXTO_REPOSO;
     this.pasos      = null;       // { titulo, lista, i }; cada ítem es un texto o renglones ya armados
     this.fichaDe    = null;       // de qué objeto es la ficha en pantalla
@@ -141,8 +151,18 @@ export class Sesion {
     this.aprendiendo = null;      // { nombre, faltan }
     this.veo        = null;       // { nombre, confianza } — la red personal
     this.votos      = [];
-    this.creo       = null;       // { nombre, confianza } — la red general
+    this.creo       = null;       // { nombre, confianza } — lo que se muestra como «creo:»
     this.votosGeneral = [];
+    this.creoClasificador = null; // lo que dicen las redes sobre el recuadro del centro
+    this.hay        = null;       // { nombre, confianza, caja } — el objeto principal del detector
+    this.votosDetector = [];
+    this.medida     = null;       // { distanciaM, velocidadKmh, llegadaS } del objeto principal
+    this.ultimaMedicionAnotada = 0;
+    this.ultimasCajas = '';
+    // Lo que se muestra no cambia de tema a cada cuadro (src/permanencia.js).
+    this.permanenciaVeo  = new Permanencia();
+    this.permanenciaCreo = new Permanencia();
+    this.cajaSuave  = null;       // { nombre, x0, y0, ancho, alto } — el recuadro que se dibuja, sin el temblor
 
     this.cuadros = [];
     this.drenando = false;
@@ -152,9 +172,14 @@ export class Sesion {
     this.cerrada = false;
   }
 
-  // `fabrica` es conectarVoz de voz_live.js ya con la clave puesta, o null si no hay clave.
+  // `fabrica` conecta con el LLM ya con la clave puesta (voz_live.js o voz_deepseek.js),
+  // o es null si no hay clave. `fabrica.modo` dice cómo conversa ese LLM:
+  //   'audio' → escucha y habla él (Gemini Live): las gafas mandan y reciben sonido.
+  //   'texto' → sólo lee y escribe (DeepSeek): las gafas transcriben lo que se dice,
+  //             lo mandan como {t:"texto"} y leen en voz alta cada {t:"dicho"}.
   async conectarVoz(fabrica) {
     if (!fabrica) { this._estado('sin_clave'); this._pintar(); return; }
+    this.modoVoz = fabrica.modo ?? 'audio';
     this._estado('conectando');
     try {
       const voz = await fabrica({
@@ -164,6 +189,7 @@ export class Sesion {
         alInterrumpir: () => this.enviarJson({ t: 'callar' }),
         alDicho: (quien, texto) => this.enviarJson({ t: 'dicho', quien, texto }),
         alEstado: (voz, detalle) => this._estado(voz, detalle),
+        alAviso: (texto) => this._avisar(texto),
       });
       if (this.cerrada) voz.cerrar(); else this.voz = voz;
     } catch (e) {
@@ -255,11 +281,16 @@ export class Sesion {
   // Marca, modelo, características y partes del aparato del recuadro, con el LLM.
   // Las negativas están ANTES de mandar nada: lo que no sale de la máquina no se filtra.
   async _identificar() {
-    if (!this.identificar) return { ok: false, motivo: 'Para el modelo hace falta la clave de Gemini' };
+    if (!this.identificar) return { ok: false, motivo: 'Para el modelo hace falta la clave del LLM' };
     if (!this.ultimoCuadro) return { ok: false, motivo: 'No hay imagen: prendé la cámara' };
     const visto = this.veo ?? this.creo;
     const general = this.ultimoGeneral;
-    if (visto?.nombre === CLASE_PERSONA || (general?.nombre === CLASE_PERSONA && general.confianza >= SOSPECHA_DE_PERSONA))
+    // Con detector y un aparato localizado, lo que se manda es el recorte DE ESE
+    // APARATO, no el recuadro del centro: aunque haya una persona en el cuadro, ella
+    // no viaja. Sin aparato localizado vale la regla de siempre: ante la sospecha de
+    // una persona en el recuadro, no se manda nada.
+    const aparato = this.hay && this.hay.nombre !== CLASE_PERSONA && this.hay.caja ? this.hay : null;
+    if (!aparato && (visto?.nombre === CLASE_PERSONA || (general?.nombre === CLASE_PERSONA && general.confianza >= SOSPECHA_DE_PERSONA)))
       return { ok: false, motivo: 'Hay una persona en el recuadro: sólo identifico aparatos' };
     if (this.identificando) return { ok: false, motivo: 'Ya estoy mirando ese aparato' };
 
@@ -268,7 +299,7 @@ export class Sesion {
     this.mostrando = 'texto';
     this._pintar();
     try {
-      const f = await this.identificar(this.ultimoCuadro, visto?.nombre ?? '');
+      const f = await this.identificar(this.ultimoCuadro, aparato?.nombre ?? visto?.nombre ?? '', aparato?.caja);
       if (this.cerrada) return { ok: false };
       if (!f) return { ok: false, motivo: 'No veo ningún aparato en el recuadro' };
       const deATres = (lista) => { const out = []; for (let k = 0; k < lista.length; k += 3) out.push(lista.slice(k, k + 3)); return out; };
@@ -332,7 +363,7 @@ export class Sesion {
 
       case 'olvidar_objeto': {
         const ok = this.red.olvidar(args.nombre);
-        if (ok) { this.red.entrenar(); this.guardarRed(this.red); this.votos = []; this.veo = null; }
+        if (ok) { this.red.entrenar(); this.guardarRed(this.red); this.votos = []; this.veo = null; this.permanenciaVeo.reiniciar(); }
         return { ok };
       }
 
@@ -392,7 +423,7 @@ export class Sesion {
 
   _estado(voz, detalle) {
     this.vozEstado = voz;
-    this.enviarJson({ t: 'estado', voz, detalle: detalle ? String(detalle).slice(0, 200) : undefined });
+    this.enviarJson({ t: 'estado', voz, modo: this.modoVoz, detalle: detalle ? String(detalle).slice(0, 200) : undefined });
   }
 
   // De a un cuadro por vez y en orden. Mientras uno se procesa (la red ya entrenada
@@ -439,6 +470,7 @@ export class Sesion {
         this.guardarRed(this.red);
         this.votos = [];
         this.veo = null;
+        this.permanenciaVeo.reiniciar();
         this.texto = this.red.lista
           ? `Aprendí: ${a.nombre}`
           : `Aprendí: ${a.nombre}. Ahora mostrame otra cosa (o «nada»).`;
@@ -455,7 +487,7 @@ export class Sesion {
     const pred = this.red.predecir(vector);
     this.votos.push(pred && pred.confianza >= CONFIANZA_MINIMA ? pred : null);
     if (this.votos.length > VOTOS) this.votos.shift();
-    this.veo = this._mayoria(this.votos);
+    this.veo = this.permanenciaVeo.actualizar(this._mayoria(this.votos));
 
     // La red general (base pública) opina aparte, y sólo cuando está segura. El
     // vector del extractor personal ya está calculado arriba: no se saca dos veces.
@@ -465,9 +497,97 @@ export class Sesion {
       this.ultimoGeneral = general;
       this.votosGeneral.push(general && general.confianza >= CONFIANZA_GENERAL ? general : null);
       if (this.votosGeneral.length > VOTOS) this.votosGeneral.shift();
-      this.creo = this._mayoria(this.votosGeneral);
+      this.creoClasificador = this._mayoria(this.votosGeneral);
     }
+
+    // El detector mira el cuadro ENTERO y dice dónde está cada cosa. De todas se
+    // queda con UNA, la que está en la mirada (principalDe), y si es algo con alto
+    // conocido, la mide. El resto del entorno no llega a la pantalla.
+    let detecciones = null;
+    if (this.detector) {
+      detecciones = await this.detector.detectar(img);
+      if (this.cerrada) return;
+      // Lo que el detector marcó sin estar seguro no se tira: si está en la mirada,
+      // el recorte se le muestra a las redes propias y deciden ellas.
+      const confirmadas = this.conjunto ? await confirmar(detecciones, img, this.conjunto, { confianzaRedes: CONFIANZA_GENERAL }) : [];
+      if (this.cerrada) return;
+      const principal = principalDe([...detecciones, ...confirmadas], img.width, img.height);
+      this.votosDetector.push(principal);
+      if (this.votosDetector.length > VOTOS) this.votosDetector.shift();
+      const estable = this._mayoria(this.votosDetector);
+      const esElMismo = estable && principal?.nombre === estable.nombre;
+      const caja = esElMismo ? principal.caja : this.hay?.caja;
+      // ¿Contiene el centro de la mirada? Si no, está en el borde del círculo o en la mano.
+      const alCentro = Boolean(caja) && img.width / 2 >= caja.x0 && img.width / 2 <= caja.x0 + caja.ancho &&
+                       img.height / 2 >= caja.y0 && img.height / 2 <= caja.y0 + caja.alto;
+      this.hay = estable ? { ...estable, caja, alCentro } : null;
+      if (!estable) { this.medida = null; this.seguimiento.reiniciar(); }
+      else if (esElMismo) this.medida = this.seguimiento.agregar(principal, img.width, img.height, this.reloj());
+      if (esElMismo) this.color = colorDominante(img, cajaEntera(principal.caja, img)) ?? this.color;
+      this._anotarMedida();
+    }
+
+    // Qué se muestra como «creo:». Hay dos opiniones: el detector, sobre el objeto que
+    // eligió, y las redes, sobre el recuadro del centro. En orden:
+    //   1 · Lo que el detector encontró EN EL CENTRO de la mirada.
+    //   2 · Lo que las redes dicen del recuadro del centro, si no es «persona».
+    //   3 · Lo que el detector encontró en el borde de la mirada (el celular en la mano).
+    //   4 · «Persona», que va última: casi siempre interesa lo que tiene en la mano.
+    // El paso 2 antes que el 3 salió de una foto real (2-oct-2026): el detector marcó
+    // una mano como «banana», al costado, mientras las redes decían «celular 93 %» de
+    // lo que estaba en el centro, y tenían razón.
+    const det = this.hay, cla = this.creoClasificador;
+    const objeto = (x) => x && x.nombre !== CLASE_PERSONA;
+    this.creo = this.permanenciaCreo.actualizar(
+      (objeto(det) && det.alCentro) ? det
+      : objeto(cla) ? cla
+      : objeto(det) ? det
+      : det ?? cla ?? null);
+    if (detecciones) this._mandarCajas(detecciones, img);
     this._pintar();
+  }
+
+  // Al registro, una medición por segundo como mucho.
+  _anotarMedida() {
+    const m = this.medida, ahora = this.reloj();
+    if (!m || !this.hay || ahora - this.ultimaMedicionAnotada < MS_ENTRE_MEDICIONES) return;
+    this.ultimaMedicionAnotada = ahora;
+    this.registro?.medicion?.({ objeto: this.hay.nombre, distanciaM: m.distanciaM, velocidadKmh: m.velocidadKmh, llegadaS: m.llegadaS });
+  }
+
+  // El recuadro, para que el emulador lo dibuje sobre la imagen. Unas gafas con un
+  // OLED de 128×64 no pueden dibujarlo sobre el mundo: lo ignoran.
+  //   mirado → EL recuadro: el del objeto que la pantalla está nombrando, o null. Uno
+  //            solo, y sin el temblor del detector (promedio con el cuadro anterior,
+  //            de a 4 px). Si la pantalla nombra una cosa y el detector sigue otra,
+  //            no se dibuja ninguno: dos mensajes distintos a la vez es peor que uno.
+  //   lista  → todo lo que marcó el detector en este cuadro, crudo. Sólo para probar:
+  //            el emulador no lo dibuja si no se le pide.
+  _mandarCajas(detecciones, img) {
+    const tema = this.veo ?? this.creo, hay = this.hay;
+    let mirado = null;
+    if (hay?.caja && tema?.nombre === hay.nombre) {
+      const antes = this.cajaSuave?.nombre === hay.nombre ? this.cajaSuave : null;
+      const suave = (k) => Math.round((antes ? (antes[k] + hay.caja[k]) / 2 : hay.caja[k]) / PASO_CAJA_PX) * PASO_CAJA_PX;
+      this.cajaSuave = { nombre: hay.nombre, x0: suave('x0'), y0: suave('y0'), ancho: suave('ancho'), alto: suave('alto') };
+      mirado = { ...this.cajaSuave, confianza: Math.round(tema.confianza * 100),
+                 metros: this.medida ? metrosRedondos(this.medida.distanciaM) : undefined };
+    } else {
+      this.cajaSuave = null;
+    }
+    const msg = {
+      t: 'cajas', ancho: img.width, alto: img.height,
+      radio: Math.round(RADIO_DE_MIRADA * Math.min(img.width, img.height)),
+      mirado,
+      lista: detecciones.slice(0, 12).map(d => ({
+        nombre: d.nombre, confianza: Math.round(d.confianza * 100),
+        x0: Math.round(d.caja.x0), y0: Math.round(d.caja.y0), ancho: Math.round(d.caja.ancho), alto: Math.round(d.caja.alto),
+      })),
+    };
+    const firma = JSON.stringify(msg);
+    if (firma === this.ultimasCajas) return;
+    this.ultimasCajas = firma;
+    this.enviarJson(msg);
   }
 
   // Una fila en el registro cada vez que CAMBIA lo reconocido, no una por cuadro.
@@ -523,7 +643,11 @@ export class Sesion {
       const i = Math.min(this.paginaFicha, paginas.length - 1);
       const cuenta = paginas.length > 1 ? ` ${i + 1}/${paginas.length}` : '';
       titulo = paginas[i].titulo.slice(0, COLS - cuenta.length) + cuenta;
-      lineas = i === 0 ? [...paginas[0].lineas, this.color ? `Color: ${this.color}` : ''].filter(Boolean) : paginas[i].lineas;
+      // Si el objeto es el que sigue el detector y se pudo medir, la medida va primero.
+      const medida = this.hay && objeto.nombre === this.hay.nombre ? renglonesDeMedida(this.medida) : [];
+      lineas = i === 0
+        ? [...medida, ...paginas[0].lineas, this.color ? `Color: ${this.color}` : ''].filter(Boolean).slice(0, 3)
+        : paginas[i].lineas;
     }
     // «veo» es lo que vos le enseñaste; «creo» es la red general, que se equivoca más.
     // Lo tuyo tiene prioridad.
@@ -553,3 +677,4 @@ function masRepetido(lista) {
   for (const [v, c] of cuenta) if (c > veces) { mejor = v; veces = c; }
   return veces >= VOTOS_MINIMOS ? mejor : null;
 }
+

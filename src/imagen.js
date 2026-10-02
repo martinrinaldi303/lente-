@@ -154,3 +154,26 @@ export function colorDominante(img, region) {
   for (const [n, c] of cuenta) if (c > veces) { mejor = n; veces = c; }
   return veces >= LADO * LADO / 3 ? mejor : null;
 }
+
+// Lleva la imagen ENTERA a ancho×alto, sin recortar (se deforma si la proporción
+// cambia). Devuelve RGB en 0..1. Es para el detector, que mira todo el cuadro.
+export function escalar(img, anchoDest, altoDest) {
+  const { width, height, data } = img;
+  const out = new Float32Array(anchoDest * altoDest * 3);
+  for (let y = 0; y < altoDest; y++) {
+    const fy = Math.min(height - 1, Math.max(0, (y + 0.5) * height / altoDest - 0.5));
+    const y0 = Math.floor(fy), y1 = Math.min(height - 1, y0 + 1), wy = fy - y0;
+    for (let x = 0; x < anchoDest; x++) {
+      const fx = Math.min(width - 1, Math.max(0, (x + 0.5) * width / anchoDest - 0.5));
+      const x0 = Math.floor(fx), x1 = Math.min(width - 1, x0 + 1), wx = fx - x0;
+      const k00 = (y0 * width + x0) * 4, k01 = (y0 * width + x1) * 4, k10 = (y1 * width + x0) * 4, k11 = (y1 * width + x1) * 4;
+      const t = (y * anchoDest + x) * 3;
+      for (let c = 0; c < 3; c++) {
+        const arriba = data[k00 + c] * (1 - wx) + data[k01 + c] * wx;
+        const abajo  = data[k10 + c] * (1 - wx) + data[k11 + c] * wx;
+        out[t + c] = (arriba * (1 - wy) + abajo * wy) / 255;
+      }
+    }
+  }
+  return out;
+}

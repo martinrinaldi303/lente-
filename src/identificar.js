@@ -15,10 +15,15 @@
 //   3 · La instrucción le prohíbe al modelo describir o identificar personas, y la
 //       respuesta tiene un esquema fijo donde no hay dónde poner un nombre.
 //
-// ⚠️ SIN PROBAR contra la API real: el 2-oct-2026 no había GEMINI_API_KEY. Lo que
-// está probado es todo lo de alrededor, con un cliente de mentira.
+// Dos LLM posibles, con el mismo recorte, la misma instrucción y la misma respuesta
+// saneada: Gemini (crearIdentificador) y DeepSeek (crearIdentificadorDeepSeek).
+//
+// ⚠️ SIN PROBAR contra ninguna de las dos API reales: el 2-oct-2026 no había clave de
+// Gemini ni de DeepSeek. Lo que está probado es todo lo de alrededor, con un cliente
+// de mentira.
 
 import jpeg from 'jpeg-js';
+import { MODELO as MODELO_DEEPSEEK, pedirChat } from './deepseek.js';
 import { regionCentral } from './imagen.js';
 
 const INSTRUCCION = `Sos un técnico que reconoce dispositivos electrónicos y aparatos por una foto. \
@@ -44,10 +49,17 @@ const ESQUEMA = {
   required: ['tipo', 'seguridad', 'caracteristicas', 'partes'],
 };
 
-// El recuadro del centro del cuadro, como JPEG: es lo único que viaja.
-export function recorteDelRecuadro(cuadroJpeg) {
+// Lo único que viaja, como JPEG: el recorte del APARATO si el detector lo localizó
+// (`caja`, con un 8 % de margen), o si no el recuadro del centro del cuadro.
+export function recorteDelRecuadro(cuadroJpeg, caja = null) {
   const img = jpeg.decode(cuadroJpeg, { useTArray: true, maxResolutionInMP: 2, maxMemoryUsageInMB: 64 });
-  const r = regionCentral(img);
+  let r = regionCentral(img);
+  if (caja) {
+    const mx = caja.ancho * 0.08, my = caja.alto * 0.08;
+    const x0 = Math.max(0, Math.floor(caja.x0 - mx)), y0 = Math.max(0, Math.floor(caja.y0 - my));
+    const x1 = Math.min(img.width, Math.ceil(caja.x0 + caja.ancho + mx)), y1 = Math.min(img.height, Math.ceil(caja.y0 + caja.alto + my));
+    if (x1 - x0 >= 16 && y1 - y0 >= 16) r = { x0, y0, ancho: x1 - x0, alto: y1 - y0 };
+  }
   const data = new Uint8Array(r.ancho * r.alto * 4);
   for (let y = 0; y < r.alto; y++) {
     const desde = ((r.y0 + y) * img.width + r.x0) * 4;
@@ -74,22 +86,59 @@ export function normalizar(crudo) {
   };
 }
 
-// `ia` es un cliente de @google/genai. Devuelve una función (cuadroJpeg, pista) → ficha | null.
+const pregunta = (pista) => pista ? `La red de las gafas cree que es: ${pista}. ¿Qué aparato es, de qué marca y modelo?`
+                                  : '¿Qué aparato es, de qué marca y modelo?';
+
+// `ia` es un cliente de @google/genai. Devuelve una función (cuadroJpeg, pista, caja) → ficha | null.
 export function crearIdentificador({ ia, modelo }) {
-  return async (cuadroJpeg, pista = '') => {
-    const recorte = recorteDelRecuadro(cuadroJpeg);
+  return async (cuadroJpeg, pista = '', caja = null) => {
+    const recorte = recorteDelRecuadro(cuadroJpeg, caja);
     const respuesta = await ia.models.generateContent({
       model: modelo,
       contents: [{
         role: 'user',
         parts: [
           { inlineData: { mimeType: 'image/jpeg', data: Buffer.from(recorte).toString('base64') } },
-          { text: pista ? `La red de las gafas cree que es: ${pista}. ¿Qué aparato es, de qué marca y modelo?`
-                        : '¿Qué aparato es, de qué marca y modelo?' },
+          { text: pregunta(pista) },
         ],
       }],
       config: { systemInstruction: INSTRUCCION, responseMimeType: 'application/json', responseSchema: ESQUEMA, temperature: 0.2 },
     });
     return normalizar(JSON.parse(respuesta.text));
+  };
+}
+
+// DeepSeek no acepta un esquema de respuesta como Gemini: se le pide «un objeto json»
+// con la forma escrita en la instrucción (así lo indica su documentación), y lo que
+// vuelva pasa igual por normalizar(), que tira todo lo que no esté en la ficha. Tampoco
+// acá hay dónde poner el nombre de una persona.
+const FORMATO_JSON = `Contestá SOLAMENTE con un objeto json con esta forma, sin texto alrededor:
+{"tipo": "qué aparato es, en una o dos palabras; vacío si no hay ninguno",
+ "marca": "", "modelo": "el modelo o la familia más probable",
+ "seguridad": "alta, media o baja",
+ "por_que": "en qué te fijaste: el logo, las cámaras, los puertos",
+ "caracteristicas": ["hasta 6: pantalla, cámaras, puerto de carga, año aproximado"],
+ "partes": ["hasta 8 partes, en el orden en que se desarma"]}`;
+
+// La misma función que crearIdentificador, con la API de DeepSeek: (cuadroJpeg, pista, caja) → ficha | null.
+// `traer` es fetch; se cambia por uno de mentira para probar sin red.
+export function crearIdentificadorDeepSeek({ apiKey, modelo = MODELO_DEEPSEEK, base, traer }) {
+  return async (cuadroJpeg, pista = '', caja = null) => {
+    const recorte = recorteDelRecuadro(cuadroJpeg, caja);
+    const m = await pedirChat({ apiKey, base, traer, cuerpo: {
+      model: modelo, max_tokens: 700, response_format: { type: 'json_object' },
+      messages: [
+        { role: 'system', content: `${INSTRUCCION}\n\n${FORMATO_JSON}` },
+        // Las imágenes van sólo en mensajes del usuario, como data: URL.
+        { role: 'user', content: [
+          { type: 'text', text: pregunta(pista) },
+          { type: 'image_url', image_url: { url: `data:image/jpeg;base64,${Buffer.from(recorte).toString('base64')}` } },
+        ] },
+      ],
+    } });
+    // La documentación avisa que con salida JSON a veces vuelve vacío.
+    const texto = String(m.content ?? '').trim();
+    if (!texto) throw new Error('DeepSeek no contestó nada, probá de nuevo');
+    return normalizar(JSON.parse(texto));
   };
 }

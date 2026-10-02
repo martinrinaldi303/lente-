@@ -24,6 +24,10 @@
 //     {t:"callar"}                     el usuario interrumpió: vaciar el parlante
 //     {t:"estado", voz, detalle}
 //     {t:"aviso", texto}               un pedido que no se pudo hacer, y por qué
+//     {t:"estado", voz, modo, detalle}  cómo está la voz; modo "audio" (el LLM escucha y habla) o
+//                                       "texto" (sólo lee y escribe: transcribir y leer es de las gafas)
+//     {t:"cajas", ancho, alto, radio, mirado, lista}  el recuadro del objeto mirado (uno, o null),
+//                                       el radio de la mirada y lo crudo del detector; sólo para el emulador
 //     {t:"dicho", quien, texto}        transcripción, sólo para el emulador
 
 export const BIN_AUDIO_SUBE = 0x01;

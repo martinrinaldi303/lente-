@@ -28,17 +28,19 @@ npm test
 | `src/red_objetos.js` | La red propia, portada de `class24`: 168 → 64 (relu) → softmax |
 | `src/rasgos.js` | De una imagen a un vector de 168 números (color + bordes), sin modelos bajados |
 | `src/medir.js` | Dimensiones por distancia y peso estimado por volumen × densidad |
-| `src/voz_live.js` | La voz: Gemini Live API. Lo único que usa una API de afuera |
+| `src/voz_live.js` | La voz con Gemini Live API (escucha y habla él) |
+| `src/voz_deepseek.js` | La conversación con DeepSeek (por escrito; ver la novena pasada) |
 | `src/hud.js` | Corta el texto a la medida del OLED: 21 columnas, 5 renglones |
 | `src/cola_acotada.js` | Copiada de MIIA: se queda con el cuadro más nuevo |
 | `publico/` | El emulador: micrófono, cámara, parlante y un OLED de 128×64 dibujado |
 
-Para prender la voz: copiar `.env.example` a `.env` y poner una clave de Gemini
+Para prender la voz: copiar `.env.example` a `.env` y poner una clave de DeepSeek
+(`DEEPSEEK_API_KEY`) o una clave de Gemini
 **nueva** (no la de MIIA: comparten cuota y la corrida sigue hasta el 12-oct).
 
 ### Probado y sin probar
 
-- **Probado:** las 56 pruebas en frío (una usa la base MySQL real); el emulador contra el servidor real, enseñando
+- **Probado:** las 82 pruebas en frío (una usa la base MySQL real); el emulador contra el servidor real, enseñando
   y reconociendo tres objetos con cuadros sintéticos; el rechazo por token y por
   origen; que el servidor no arranque abierto a la red sin token; que las redes en
   C++ aprenden una base de juguete y que el cerebro predice lo mismo que el
@@ -73,7 +75,7 @@ los del celular (unos auriculares Bluetooth). Las gafas quedan con cámara y pan
 ## Cómo se conecta todo
 
 ```
- gafas (ESP32)  ──WiFi, WebSocket──▶  cerebro (Node)  ──▶  Gemini Live (sólo la voz)
+ gafas (ESP32)  ──WiFi, WebSocket──▶  cerebro (Node)  ──▶  LLM de afuera: DeepSeek o Gemini (sólo conversar)
    cámara, mic, OLED                   red propia, HUD, guías
         ▲                                   ▲
         └────── reloj: botones y avisos ────┘   (por el celular)
@@ -432,6 +434,12 @@ recorte, le prohíbe al modelo describir personas y el esquema de la respuesta n
 tiene campo para un nombre. Lo que sí se puede: personas que aceptan y se cargan
 ellas mismas, o un código QR que la persona muestra.
 
+El 2-oct pidió además bajar el **padrón electoral** como base para reconocer
+personas, diciendo que es un trabajo para la policía. Tampoco se hizo, por lo mismo.
+Y aparte: el padrón no se baja entero (la consulta pública es de a un documento y
+no trae fotos), es dato personal protegido, y si el trabajo es de una fuerza, el
+acceso a datos biométricos lo tramita la fuerza por su canal, no se arma en una PC.
+
 **Exportación con memoria.** `exportar_rasgos.js` guarda lo calculado por carpeta y
 por extractor en `datos/rasgos/_cache/`. Agregar una clase calcula sólo lo nuevo
 (re-exportar todo ya calculado: 1 minuto), y una corrida que se corta retoma.
@@ -537,6 +545,262 @@ la sexta pasada y escribió el Word; la otra subió el repo y, sin saber de la
 primera, escribió un segundo generador de Word. Se borró el duplicado
 (`herramientas/escribir_documento.js`) y quedó el de `npm run documento`. Si se
 vuelve a abrir más de una sesión acá, que una sola toque los archivos.
+
+## Séptima pasada: el detector — 2-oct-2026
+
+**Por qué.** Las redes clasifican lo que llena el recuadro del centro. Con un
+celular en la mano junto a la cara ganaba «persona»; un vehículo lejos no se veía;
+y sin saber cuántos píxeles ocupa un objeto no se puede medir nada.
+
+**Qué se sumó.** YOLOS-tiny (Hustvl, Apache 2.0), ONNX de `Xenova/yolos-tiny` en
+Hugging Face: `modelos/yolos-tiny/model_quantized.onnx`, 9,7 MB, sha256
+`82b5c1de…e86b6b` verificado. 80 clases de COCO. Corre en la PC con
+`onnxruntime-node`, que ya estaba.
+
+| Archivo | Qué hace |
+|---|---|
+| `src/detector.js` | Pasa el cuadro entero por la red y devuelve nombre, confianza y recuadro de cada objeto |
+| `src/seguimiento.js` | Elige el objeto principal y le mide distancia, velocidad y tiempo de llegada |
+| `herramientas/medir_detector.js` | Lo mide contra las anotaciones de COCO |
+| `herramientas/probar_escenas.js` | Le muestra al cerebro escenas enteras por el WebSocket y lee la pantalla |
+
+### Cuánto encuentra
+
+Contra las anotaciones de la validación de COCO (que no se usó para entrenarlo),
+objetos de 48 px o más, 60 fotos por clase, superposición ≥ 0,5:
+
+| Lado menor | Encontrados | Tiempo por cuadro |
+|---|---|---|
+| **384 (el que se usa)** | 845 de 1.124 (75 %) | ~135 ms |
+| 480 | 867 de 1.124 (77 %) | ~235 ms |
+
+A 384: celular 54 de 70 (77 %), persona 88 %, auto 76 %, moto 81 %, colectivo 79 %,
+camión 53 %, bicicleta 77 %, notebook 73 %, pantalla 80 %, teclado 79 %, mouse
+81 %, control remoto 68 %, taza 63 %, botella 67 %. El lado 480 cuesta el doble
+de tiempo por dos puntos: no vale la pena.
+
+### Cuál de todos es «el» objeto, y quién manda
+
+`principalDe()`: lo que está en el centro de la mirada (si hay varios, el recuadro
+más chico); si es una persona con algo en la mano, el objeto.
+
+Para la pantalla hay dos opiniones, el detector y las redes del recuadro del centro:
+
+1. Lo que el detector encontró **en el centro**.
+2. Lo que las redes dicen del recuadro del centro, si no es «persona».
+3. Lo que el detector encontró al costado.
+4. «Persona».
+
+El paso 2 antes que el 3 salió de una foto real: el detector marcó una mano como
+«banana 67 %» al costado mientras las redes decían «celular 93 %» del centro, y
+tenían razón.
+
+### Escenas reales por el servidor (`probar_escenas.js`)
+
+Fotos enteras de COCO, con el objeto donde cayó, mandadas como cuadros de cámara:
+
+| Clase | Escenas | El detector la marcó | La pantalla la nombró |
+|---|---|---|---|
+| celular | 40 | 33 | 26 |
+| moto | 24 | 21 | 20 (17 con distancia en pantalla) |
+| notebook | 24 | 21 | 7 |
+| auto | 28 | 25 | 6 |
+
+Que la pantalla nombre otra cosa no siempre es un error: en una escena con una
+notebook y un gato en el centro, dice «gato». Antes del detector, en estas escenas
+el celular no salía nunca.
+
+### Distancia, velocidad y tiempo
+
+Ya no son sólo cuentas: `Seguimiento` las alimenta con el alto del recuadro del
+objeto principal, y salen en la pantalla («A ≈ 12 m», «Se acerca ≈ 20 km/h»,
+«Llega en ≈ 2 s») y a la tabla `mediciones`, una por segundo. Para auto, moto,
+bicicleta, colectivo, camión y persona.
+
+⚠️ **Sin probar con vehículos reales.** Lo probado es un auto simulado que viene a
+36 km/h (da 36 ± 5) y el camino completo con fotos fijas (dan «Quieto»). El error
+de la distancia es de al menos 15 %, depende de `CAMARA_FOV_DIAGONAL` (55 para la
+Logi C270) y, si el objeto está cortado por el borde, no se mide.
+
+### En el emulador
+
+Los recuadros se dibujan sobre la imagen; el grueso y celeste es el elegido, con su
+distancia si se pudo medir. Es una ayuda del emulador: un OLED de 128×64 no puede
+dibujar sobre el mundo.
+
+### Marca y modelo, con detector
+
+Si el detector localizó un aparato, al LLM va el recorte **de ese aparato** (con
+8 % de margen), aunque haya una persona en el cuadro. Si lo único que hay es una
+persona, se sigue negando.
+
+### Lo que apareció en la base durante las pruebas
+
+A las 02:00 del 2-oct apareció en `objetos` una clase **`martin`** con 12 ejemplos:
+la enseñó Martín desde su navegador, no las pruebas. Sobrevivió a cuatro reinicios
+del cerebro, que es la primera prueba real de la persistencia. No se tocó.
+⚠️ Las pruebas de esta sesión sí borraron varias veces las tablas `reconocimientos`
+y `mediciones` para limpiar lo que ellas mismas escribían: si en ese rato había
+filas del uso real de Martín, se fueron con las de prueba.
+
+## Octava pasada: la mirada — 2-oct-2026
+
+**Por qué.** Martín lo probó con su cámara: la pantalla saltaba entre varias cosas y
+el emulador dibujaba un recuadro por cada una («persona», «cama», «cepillo dental»
+sobre la oreja), todos a la vez y cambiando a cada cuadro. En unas gafas eso cansa
+la vista y saca la atención de la calle.
+
+**La causa, medida** (`herramientas/medir_confianza.js`, 400 fotos de validación de
+COCO, las 80 clases). De cada recuadro que marca el detector, ¿hay ahí un objeto
+anotado de esa clase?
+
+| Confianza que dice tener | Recuadros | Ciertos |
+|---|---|---|
+| 0,5 a 0,6 | 1.014 | 22 % |
+| 0,6 a 0,7 | 863 | 25 % |
+| 0,7 a 0,8 | 818 | 28 % |
+| 0,8 a 0,9 | 852 | 38 % |
+| 0,9 a 1,0 | 1.425 | 77 % |
+
+Marca 12 recuadros por foto y más de la mitad no son nada. El umbral era 0,6.
+
+**Qué cambió.**
+
+1. **Sólo cuenta la mirada.** Las gafas no tienen un sensor que mire el ojo: «lo que
+   se mira» es el centro de la imagen, adonde apunta la cabeza. `principalDe()`
+   descarta todo lo que no toque un círculo en el centro (radio: 22 % del lado menor)
+   y de lo que queda elige UNO. Lo que está alrededor no llega a la pantalla.
+2. **Umbral 0,9.** El objeto elegido, uno por foto, sobre las mismas 400:
+
+   | Umbral | Opina en | De ésas, cierto |
+   |---|---|---|
+   | 0,6 (el viejo) | 376 | 276 (73 %) |
+   | 0,8 | 354 | 296 (84 %) |
+   | **0,9** | 335 | **305 (91 %)** |
+   | 0,95 | 302 | 283 (94 %) |
+
+   Con 0,9 acierta en MÁS fotos que con 0,6, no sólo se calla más: antes una cosa
+   dudosa le sacaba el lugar a una cierta.
+3. **La pantalla no cambia de tema antes de 4 cuadros** (2 segundos a 2 cuadros por
+   segundo): `src/permanencia.js`, para «veo» y para «creo». El porcentaje no se
+   mueve por menos de 5 puntos, la distancia va de a medio metro y la velocidad de a
+   5 km/h: un dígito que baila redibuja la pantalla sin decir nada.
+4. **Un solo recuadro en el emulador:** el del objeto que la pantalla nombra, sin el
+   temblor del detector. Lo demás se ve sólo tildando «Ver todo lo que marca el
+   detector», que es para probar.
+
+Esto reemplaza la regla de la séptima pasada: «lo que el detector encontró al
+costado» ya no existe.
+
+**La captura de Martín, pasada por el detector con la regla nueva:** marca «persona
+99 %» y «frisbee 67 %» sobre la oreja; la mirada elige «persona» y nada más.
+
+### La segunda opinión (el mismo día, más tarde)
+
+Martín lo probó con el celular en la mano, de atrás y al costado de la cara: la
+pantalla decía sólo «persona», y «A ≈ 3,5 m» estando a medio metro. Pasando su
+captura por el detector: lo marcó, pero como «pantalla 67 %», y por debajo de 0,9
+ya no contaba.
+
+**Lo que se probó y NO sirve.** Recortar cada recuadro dudoso y creerle a las redes
+propias lo que digan del recorte. En su captura dicen «celular 83 %» y tienen razón,
+pero en general no: las redes sólo conocen 67 clases, y de algo que no conocen dicen
+con toda confianza «notebook» o «colectivo». Medido sobre 1.200 fotos de COCO, 336
+recuadros dudosos donde las redes (≥ 0,7) dicen otra cosa que el detector: «notebook»
+4 de 63, «camión» 2 de 50, «auto» 10 de 34, «celular» 0 de 6. Con eso el objeto
+elegido bajaba de 90 % a 81 % de aciertos.
+
+**Lo que quedó** (`confirmar()` en `src/seguimiento.js`): un recuadro dudoso que
+toca la mirada vale sólo si las redes propias, mirando el recorte, dicen **lo mismo**
+que el detector. Sobre 390 fotos con aparatos, 1.283 recuadros dudosos: cuando
+coinciden es cierto 191 de 287 (67 %); el detector dudoso solo, menos de 4 de 10.
+Cuesta hasta dos pasadas más de las redes por cuadro (unos 40 ms cada una).
+
+El objeto elegido, sobre las 400 fotos: 305 ciertos de 338 (90 %); sin la segunda
+opinión, 305 de 335 (91 %). En general no suma ni resta. Donde suma es en lo que
+se tiene en la mano:
+
+| Escenas reales por el servidor | Séptima pasada | Sólo mirada y 0,9 | Con segunda opinión |
+|---|---|---|---|
+| celular | 26 de 40 | 20 de 40 | **25 de 40** |
+| moto | 20 de 24 | 18 de 23 | 19 de 23 |
+| notebook | 7 de 24 | 9 de 23 | 7 de 23 |
+| auto | 6 de 28 | 8 de 26 | 9 de 26 |
+
+Nunca hubo más de un recuadro.
+
+⚠️ **La captura de Martín sigue dando «persona»:** ahí el detector dijo «pantalla» y
+las redes «celular», no coinciden. Para su celular visto de atrás, lo que queda es
+mirarlo (ponerlo en el centro) o enseñárselo con «Enseñar».
+
+**La distancia a una persona** sólo se mide si se la ve entera: recuadro al menos
+1,5 veces más alto que ancho y a más del 2 % del borde. Un busto ya no dice «3,5 m».
+
+También cambió «en la mano»: antes el centro del objeto tenía que caer dentro del
+recuadro de la persona; ahora alcanza con que los dos recuadros se toquen.
+
+⚠️ **Un vehículo que viene de costado ya no se anuncia:** sólo se mide lo que se
+mira. Es la consecuencia directa de lo pedido, y hay que saberla antes de salir a la
+calle. Un aviso de peligro fuera de la mirada es otra función, con su propia prueba.
+
+⚠️ **Sin probar con la cámara de Martín:** el panel de la app no deja usarla. Lo
+probado son las pruebas en frío (73, 2 salteadas porque MySQL estaba apagado), sus
+dos capturas y las escenas de COCO.
+
+**Seguir el ojo de verdad** pide una cámara infrarroja apuntando al ojo y su propia
+red: no entra en la opción A.
+
+## Novena pasada: DeepSeek — 2-oct-2026
+
+**Por qué.** Martín pidió que ande con la API de DeepSeek.
+
+**Qué ofrece** (leído ese día en api-docs.deepseek.com): formato compatible con
+OpenAI, `POST https://api.deepseek.com/chat/completions`. Dos modelos:
+`deepseek-flash` (DeepSeek-V4.1-Flash: herramientas, salida JSON **e imágenes**) y
+`deepseek-v4-pro` (más caro, sin imágenes). El modo «thinking» viene prendido por
+defecto y se apaga con `thinking: {type: "disabled"}`. **No tiene audio.**
+
+**Qué se hizo.**
+
+| Archivo | Qué hace |
+|---|---|
+| `src/deepseek.js` | Un pedido a la API con `fetch` (sin SDK) y los errores traducidos |
+| `src/voz_deepseek.js` | La conversación por turnos, con las mismas herramientas que Gemini |
+| `src/instruccion.js` | Quién es MIIA para el LLM, común a los dos |
+| `src/identificar.js` | Suma `crearIdentificadorDeepSeek`: marca y modelo con el recorte como imagen |
+| `pruebas/deepseek.test.js` | 9 pruebas con una API de mentira |
+
+Con `DEEPSEEK_API_KEY` en `.env` el cerebro usa DeepSeek; con `GEMINI_API_KEY`,
+Gemini; con las dos, DeepSeek, salvo que `LLM=gemini`.
+
+**La diferencia que importa: DeepSeek conversa por escrito.** Gemini Live escucha
+y habla él. Con DeepSeek, escuchar y hablar quedan del lado de las gafas:
+
+- En el **emulador** lo hace el navegador (Edge o Chrome): transcribe lo que se
+  dice, lo manda como texto y lee en voz alta la respuesta. ⚠️ Ese reconocedor no
+  es local: el audio va al servicio de voz de Microsoft o de Google.
+- En unas **gafas de verdad** (ESP32) no hay navegador. Con DeepSeek, hoy, no
+  pueden conversar por voz: falta poner en el cerebro un transcriptor y un
+  sintetizador (por ejemplo whisper.cpp y Piper, que corren en la PC). Sin eso, las
+  gafas reales necesitan Gemini para la voz.
+
+Las trabas de privacidad son las mismas: a DeepSeek va sólo el recorte del aparato,
+nunca con una persona en el recuadro, y la instrucción le prohíbe describir personas.
+
+**Qué sale de la máquina con DeepSeek:** el texto de lo que se le dice, lo que
+devuelven las herramientas (qué objeto ve la red, la lista de objetos enseñados) y,
+sólo al pedir marca y modelo, el recorte del aparato. Los servidores son de DeepSeek.
+
+**Probado.** Las 9 pruebas con una API de mentira (pedido, herramientas encadenadas,
+errores 401/402/429, argumentos rotos, el recorte como imagen). El cerebro de verdad
+contra una API de mentira local con el formato de la documentación: conectó, pidió
+una herramienta, recibió el resultado y contestó. El emulador en modo texto, con el
+mensaje de estado simulado.
+
+⚠️ **Sin probar contra la API real de DeepSeek:** no había `DEEPSEEK_API_KEY`. Ni
+el reconocedor ni la voz del navegador con un micrófono real: el panel de la app no
+deja usarlo. Lo primero que hay que mirar con la clave puesta: que el modelo llame a
+las herramientas y que el JSON de marca y modelo venga bien formado.
 
 ## Desarmar, código y matemática — bases encontradas el 1-oct-2026
 

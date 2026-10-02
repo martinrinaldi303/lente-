@@ -29,9 +29,17 @@ const GUIA_DE_EJEMPLO = {
 const $ = (id) => document.getElementById(id);
 const lienzo = $('hud'), ctx = lienzo.getContext('2d');
 
+const FALTA_CLAVE = 'falta DEEPSEEK_API_KEY o GEMINI_API_KEY en .env';
+const IDIOMA = 'es-AR';
+
 let ws = null;
 let vozLista = false;
-let micActivo = null;      // { contexto, flujo }
+// Cómo conversa el LLM que tiene el cerebro (lo dice en {t:"estado"}):
+//   'audio' → escucha y habla él (Gemini Live): se le manda el micrófono crudo.
+//   'texto' → sólo lee y escribe (DeepSeek): acá se transcribe lo que decís y se lee
+//             en voz alta lo que contesta, con lo que trae el navegador.
+let modoVoz = 'audio';
+let micActivo = null;      // { contexto, flujo } en modo audio; { reconocedor } en modo texto
 let camActiva = null;      // { flujo, reloj }
 let parlante = null, proximoInicio = 0, sonando = new Set();
 let ultimoDicho = null;
@@ -56,6 +64,43 @@ function dibujarHud({ titulo = '', lineas = [], pie = '' }) {
 dibujarHud({ titulo: 'MIIA gafas', lineas: ['Sin conexion.'], pie: '' });
 $('espejo').onchange = (e) => lienzo.classList.toggle('espejo', e.target.checked);
 $('oscurecer').onchange = (e) => $('vista').classList.toggle('oscurecer', e.target.checked);
+// El recuadro del objeto que se está mirando, sobre la imagen: UNO, el que la
+// pantalla nombra. Es una ayuda del emulador: un OLED de 128×64 delante del ojo no
+// puede dibujar sobre el mundo. Con «ver todo» se suma, más tenue, lo crudo del
+// detector y el círculo de la mirada: sirve para probar, no para usar.
+const lienzoCajas = $('cajas'), ctxCajas = lienzoCajas.getContext('2d');
+let ultimasCajas = {};
+$('verCajas').onchange = () => dibujarCajas(ultimasCajas);
+function dibujarCajas(msg) {
+  ultimasCajas = msg;
+  const { ancho = 640, alto = 480, radio = 0, mirado = null, lista = [] } = msg;
+  if (lienzoCajas.width !== ancho || lienzoCajas.height !== alto) { lienzoCajas.width = ancho; lienzoCajas.height = alto; }
+  ctxCajas.clearRect(0, 0, ancho, alto);
+  ctxCajas.font = '600 15px system-ui, sans-serif';
+  ctxCajas.textBaseline = 'top';
+  const caja = (c, color, grosor) => {
+    ctxCajas.strokeStyle = color;
+    ctxCajas.lineWidth = grosor;
+    ctxCajas.strokeRect(c.x0, c.y0, c.ancho, c.alto);
+    const texto = `${c.nombre} ${c.confianza}%` + (c.metros !== undefined ? ` · ${String(c.metros).replace('.', ',')} m` : '');
+    const w = ctxCajas.measureText(texto).width + 10, y = c.y0 >= 22 ? c.y0 - 22 : c.y0 + 2;
+    ctxCajas.fillStyle = 'rgba(0, 0, 0, 0.65)';
+    ctxCajas.fillRect(c.x0, y, w, 20);
+    ctxCajas.fillStyle = color;
+    ctxCajas.fillText(texto, c.x0 + 5, y + 2);
+  };
+  if ($('verCajas').checked) {
+    for (const c of lista) caja(c, 'rgba(255, 223, 154, 0.6)', 1);
+    if (radio) {
+      ctxCajas.strokeStyle = 'rgba(95, 208, 255, 0.5)';
+      ctxCajas.lineWidth = 1;
+      ctxCajas.beginPath();
+      ctxCajas.arc(ancho / 2, alto / 2, radio, 0, 2 * Math.PI);
+      ctxCajas.stroke();
+    }
+  }
+  if (mirado) caja(mirado, '#5fd0ff', 3);
+}
 
 function anotar(clase, texto) {
   const r = $('registro');
@@ -98,7 +143,7 @@ function habilitar() {
   for (const id of ['ensenar', 'olvidar', 'identificar', 'guardarTarjeta', 'demo', 'anterior', 'siguiente']) $(id).disabled = !si;
   // Lo que depende de la voz se apaga con ella, y dice por qué.
   for (const id of ['mic', 'enviar', 'texto']) $(id).disabled = !(si && vozLista);
-  const motivo = !si ? 'sin conexión con el cerebro' : vozLista ? '' : 'la voz está apagada: falta GEMINI_API_KEY en .env';
+  const motivo = !si ? 'sin conexión con el cerebro' : vozLista ? '' : `la voz está apagada: ${FALTA_CLAVE}`;
   $('mic').title = motivo;
   $('texto').placeholder = motivo ? `No disponible: ${motivo}` : 'escribirle a MIIA';
   $('conectar').textContent = si ? 'Desconectar' : 'Conectar';
@@ -130,10 +175,13 @@ function conectar() {
     const msg = JSON.parse(ev.data);
     if (msg.t === 'hud') dibujarHud(msg);
     else if (msg.t === 'callar') callar();
-    else if (msg.t === 'dicho') anotar(msg.quien, msg.texto);
+    else if (msg.t === 'dicho') { anotar(msg.quien, msg.texto); if (modoVoz === 'texto' && msg.quien === 'miia') decir(msg.texto); }
     else if (msg.t === 'aviso') avisar(msg.texto);
+    else if (msg.t === 'cajas') dibujarCajas(msg);
     else if (msg.t === 'estado') {
-      const nombres = { sin_clave: 'apagada (falta GEMINI_API_KEY en .env)', conectando: 'conectando…', lista: 'lista', cerrada: 'cerrada', error: 'error' };
+      const nombres = { sin_clave: `apagada (${FALTA_CLAVE})`, conectando: 'conectando…', lista: 'lista', cerrada: 'cerrada', error: 'error' };
+      if (msg.modo && msg.modo !== modoVoz) { apagarMic(); modoVoz = msg.modo; }
+      if (msg.voz === 'lista' && modoVoz === 'texto') nombres.lista = 'lista, por escrito (escucha y habla el navegador)';
       vozLista = msg.voz === 'lista';
       if (!vozLista) apagarMic();
       habilitar();
@@ -232,15 +280,57 @@ async function prenderMic() {
   anotar('sis', 'micrófono prendido: hablale a MIIA');
 }
 
+// ── Micrófono en modo texto: lo transcribe el navegador ───────────────────
+// El LLM no escucha, así que lo dicho tiene que llegarle escrito. Edge y Chrome
+// traen un reconocedor de voz (Web Speech API). ⚠️ No es local: el audio va al
+// servicio de voz de Microsoft o de Google. Firefox no lo tiene.
+// Unas gafas de verdad no tienen navegador: para ellas, con un LLM de texto, el
+// transcriptor tendría que estar en el cerebro. Todavía no está.
+const Reconocedor = window.SpeechRecognition || window.webkitSpeechRecognition;
+
+async function prenderDictado() {
+  if (!Reconocedor) throw new Error('este navegador no transcribe la voz. Usá Edge o Chrome, o escribile a MIIA en el cuadro de abajo.');
+  const reconocedor = new Reconocedor();
+  reconocedor.lang = IDIOMA;
+  reconocedor.continuous = true;
+  reconocedor.interimResults = false;
+  reconocedor.onresult = (ev) => {
+    for (let i = ev.resultIndex; i < ev.results.length; i++) {
+      const texto = ev.results[i].isFinal ? ev.results[i][0].transcript.trim() : '';
+      // Mientras MIIA habla, el micrófono la escucha a ella: eso no es un pedido.
+      if (!texto || speechSynthesis.speaking) continue;
+      enviarJson({ t: 'texto', texto });
+      anotar('yo', texto);
+      ultimoDicho = null;
+    }
+  };
+  reconocedor.onerror = (ev) => {
+    if (ev.error === 'no-speech' || ev.error === 'aborted') return;      // silencio: sigue escuchando
+    apagarMic();
+    avisar(ev.error === 'not-allowed' || ev.error === 'service-not-allowed'
+      ? 'El navegador no tiene permiso para el micrófono. Hacé clic en el candado junto a la dirección, elegí Permitir y recargá.'
+      : ev.error === 'network' ? 'El reconocedor de voz del navegador necesita internet y no pudo conectarse.'
+      : `El reconocedor de voz se cortó: ${ev.error}`);
+  };
+  // El navegador lo apaga solo después de un silencio largo: mientras el botón siga
+  // prendido, se vuelve a arrancar.
+  reconocedor.onend = () => { if (micActivo?.reconocedor === reconocedor) { try { reconocedor.start(); } catch { /* ya arrancó */ } } };
+  reconocedor.start();
+  micActivo = { reconocedor };
+  $('mic').classList.add('activo');
+  anotar('sis', 'micrófono prendido: hablale a MIIA (el navegador transcribe lo que decís)');
+}
+
 function apagarMic() {
   if (!micActivo) return;
-  micActivo.flujo.getTracks().forEach(t => t.stop());
-  micActivo.contexto.close();
-  micActivo = null;
+  const m = micActivo;
+  micActivo = null;                         // antes de frenar: así onend no lo vuelve a arrancar
+  if (m.reconocedor) { try { m.reconocedor.stop(); } catch { /* ya estaba frenado */ } }
+  else { m.flujo.getTracks().forEach(t => t.stop()); m.contexto.close(); }
   $('mic').classList.remove('activo');
 }
 
-$('mic').onclick = () => (micActivo ? apagarMic() : pedir($('mic'), 'el micrófono', prenderMic));
+$('mic').onclick = () => (micActivo ? apagarMic() : pedir($('mic'), 'el micrófono', modoVoz === 'texto' ? prenderDictado : prenderMic));
 
 // ── Cámara: JPEG de 320×240, 2 por segundo ────────────────────────────────
 const cuadro = document.createElement('canvas');
@@ -268,6 +358,7 @@ function apagarCam() {
   camActiva.flujo.getTracks().forEach(t => t.stop());
   $('video').srcObject = null;
   camActiva = null;
+  dibujarCajas({});
   $('cam').classList.remove('activo');
   $('vista').classList.remove('con-camara');
 }
@@ -293,11 +384,22 @@ function alBinario(bytes) {
   fuente.onended = () => sonando.delete(fuente);
 }
 
+// En modo texto el LLM no manda audio: lo que escribe lo lee la voz del navegador.
+function decir(texto) {
+  if (!('speechSynthesis' in window)) return;
+  const frase = new SpeechSynthesisUtterance(texto);
+  frase.lang = IDIOMA;
+  const voces = speechSynthesis.getVoices();
+  frase.voice = voces.find(v => v.lang === IDIOMA) ?? voces.find(v => v.lang.startsWith('es')) ?? null;
+  speechSynthesis.speak(frase);
+}
+
 // El usuario habló encima: se tira lo que quedaba por sonar.
 function callar() {
   for (const f of sonando) { try { f.stop(); } catch { /* ya terminó */ } }
   sonando.clear();
   proximoInicio = 0;
+  if ('speechSynthesis' in window) speechSynthesis.cancel();
 }
 
 // ── Botones ───────────────────────────────────────────────────────────────

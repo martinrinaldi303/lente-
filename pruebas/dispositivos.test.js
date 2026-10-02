@@ -118,7 +118,7 @@ test('identificar NUNCA manda una persona al LLM', async () => {
 test('identificar avisa si falta la clave, la cámara o el aparato', async () => {
   const sinClave = armar();
   await sinClave.mostrar();
-  assert.match((await sinClave.sesion.ejecutar('identificar_dispositivo')).motivo, /clave de Gemini/);
+  assert.match((await sinClave.sesion.ejecutar('identificar_dispositivo')).motivo, /clave del LLM/);
 
   const sinCamara = armar({ identificar: async () => null });
   assert.match((await sinCamara.sesion.ejecutar('identificar_dispositivo')).motivo, /prendé la cámara/);
