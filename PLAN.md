@@ -38,7 +38,7 @@ Para prender la voz: copiar `.env.example` a `.env` y poner una clave de Gemini
 
 ### Probado y sin probar
 
-- **Probado:** las 46 pruebas en frío; el emulador contra el servidor real, enseñando
+- **Probado:** las 56 pruebas en frío (una usa la base MySQL real); el emulador contra el servidor real, enseñando
   y reconociendo tres objetos con cuadros sintéticos; el rechazo por token y por
   origen; que el servidor no arranque abierto a la red sin token; que las redes en
   C++ aprenden una base de juguete y que el cerebro predice lo mismo que el
@@ -446,6 +446,97 @@ node herramientas/exportar_rasgos.js datos/256_ObjectCategories herramientas/cat
 ```bash
 npm run entrenar
 ```
+
+## Sexta pasada: vehículos, base MySQL, tarjetas QR y documento — 2-oct-2026
+
+### Vehículos
+
+De las dos bases que ya estaban en disco (no se bajó nada): auto, moto, colectivo,
+camión, bicicleta, tren, avión, barco, helicóptero y topadora. **67 clases**, 16.002
+filas de entrenamiento y 1.948 fotos de prueba.
+
+| | Acierto en la prueba (1.948 fotos, 67 clases) |
+|---|---|
+| Azar | 5,9 % |
+| `rasgos_v0` solo | 38,4 % ± 2,2 |
+| `rasgos_v1` solo | 42,0 % ± 2,2 |
+| `dino_s` solo | 91,2 % ± 1,3 |
+| Los tres, voto parejo | 88,9 % ± 1,4 |
+| **Los tres, voto pesado** | **91,3 % ± 1,3** |
+
+Con confianza ≥ 0,7: opina en el 92 % y acierta el 95 %. Sólo vehículos: 446 de 493
+(90 %). Lo que más confunde: camión → auto (12 veces) y auto → camión (6).
+
+Como en vivo por el servidor (`probar_en_vivo.js`, 3 fotos por carpeta, 252): 223
+bien (88 %), calló en 19, se equivocó en 10; cuando opinó acertó 96 %. Vehículos:
+51 de 54. **Celular 1 de 3 y control remoto 0 de 3**: siguen flojos, son pocos datos.
+
+### Distancia, velocidad y tiempo: están las cuentas, falta quién les dé los datos
+
+`src/medir.js` tiene `distanciaPorAltoM`, `velocidadKmh`, `tiempoDeLlegadaS` y
+`alcanceM`, con pruebas. **No están conectadas a nada**, y es a propósito: para
+medir hace falta saber cuántos píxeles de alto ocupa el vehículo, y eso lo da un
+DETECTOR (una red que marca el recuadro de cada objeto). Las redes de hoy
+clasifican lo que hay en el recuadro del centro; no localizan.
+
+- El mismo detector es lo que permitiría reconocer un vehículo LEJOS, chico en la
+  imagen, en vez de exigir que llene el recuadro.
+- Aun con detector, la distancia por tamaño aparente tiene ±15 % y la velocidad es
+  peor. Para velocidad de verdad: radar Doppler de 24 GHz (CDM324, ~6 USD).
+- Candidato de detector, **sin bajar**: YOLOS-tiny en ONNX (`Xenova/yolos-tiny`,
+  9,7 MB), entrenado con COCO.
+
+### La base de datos (MySQL de XAMPP)
+
+`src/base.js` y `docs/esquema_gafas.sql`. Base `gafas`, usuario `gafas` limitado a
+esa base (la clave está en `.env`, generada, no versionada). Seis tablas:
+`objetos`, `ejemplos`, `reconocimientos`, `tarjetas_qr`, `identificaciones`,
+`mediciones` (esta última vacía hasta que haya detector).
+
+- **El aprendizaje son los ejemplos.** Los pesos no se guardan: se recalculan al
+  arrancar. La base manda sobre el archivo de `estado/`.
+- **Es opcional.** Con MySQL apagado el cerebro arranca, avisa y sigue con el archivo.
+- **Probado de punta a punta:** se enseñaron 3 objetos por el servidor, se borró el
+  archivo local, se reinició, y volvieron de MySQL (17 de 18 fotos nuevas bien).
+
+⚠️ MySQL se arrancó con `mysqld --standalone` como proceso suelto: queda corriendo
+hasta que se lo apague desde el panel de XAMPP (o `mysqladmin -u root shutdown`).
+Escucha en todas las interfaces y `root` no tiene clave: es XAMPP de fábrica.
+
+### Tarjetas QR
+
+`src/qr.js` lee el código del cuadro entero (jsQR), entiende vCard, MECARD, enlaces
+y texto, y muestra hasta tres renglones. No abre enlaces. Se guarda sólo si se
+pide. `npm run tarjeta -- "Nombre" --org X --url https://…` arma el PNG en `tarjetas/`.
+
+### El documento
+
+`docs/Gafas MIIA - Documentación y planos.docx` (16 páginas), generado por
+`npm run documento`. Los cinco planos salen de `python herramientas/dibujar_planos.py`
+a `docs/planos/`. Se abrió con Word y se revisó página por página en PDF.
+
+⚠️ Los planos de conexiones, óptica y marco son **de partida**: nada de eso se armó.
+
+### El repositorio — 2-oct-2026
+
+Martín pidió subir el proyecto a `github.com/martinrinaldi303/lente-` (privado). Va
+en la rama `main`, encima del commit inicial que ya tenía el repo.
+
+| Va | No va |
+|---|---|
+| El código, las pruebas, las herramientas, `PLAN.md`, `README.md` | `.env` (claves y contraseña de la base) |
+| El esquema de la base, los planos y el Word | `datos/` (Caltech-256 y COCO: 4 GB) |
+| Las redes generales entrenadas, `estado/red_general_*.json` (20 MB) | `modelos/` (DINOv2), `node_modules/`, `cpp/entrenar.exe` |
+| | La red personal y `tarjetas/`: son de cada uno |
+
+Las redes generales van para que un clon ande sin bajar 2 GB y reentrenar. El
+costo: cada reentrenamiento que se suba agrega 20 MB a la historia del repo.
+
+⚠️ **Dos sesiones trabajaron a la vez en esta carpeta** esa madrugada: una terminó
+la sexta pasada y escribió el Word; la otra subió el repo y, sin saber de la
+primera, escribió un segundo generador de Word. Se borró el duplicado
+(`herramientas/escribir_documento.js`) y quedó el de `npm run documento`. Si se
+vuelve a abrir más de una sesión acá, que una sola toque los archivos.
 
 ## Desarmar, código y matemática — bases encontradas el 1-oct-2026
 
