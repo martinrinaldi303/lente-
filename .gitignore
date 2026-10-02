@@ -1,0 +1,25 @@
+# ── Dependencias ──────────────────────────────────────────
+node_modules/
+
+# ── Secretos ──────────────────────────────────────────────
+.env
+
+# ── Lo que el cerebro escribe al correr ───────────────────
+# La red personal (lo que se le enseñó) es de cada uno y no se sube. Las redes
+# generales SÍ: reentrenarlas pide bajar 2 GB de fotos y ~15 minutos.
+estado/*
+!estado/red_general_*.json
+!estado/medicion_conjunto.json
+
+# ── Binarios y compilados ─────────────────────────────────
+*.exe
+cpp/entrenar
+
+# ── Bases públicas de imágenes y sus rasgos (pesan GB) ────
+datos/
+
+# ── Modelos bajados (se vuelven a bajar; ver src/rasgos_dino.js) ──
+modelos/
+
+# ── Tarjetas QR generadas (son datos de quien las hace) ──
+tarjetas/
