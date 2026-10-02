@@ -1,0 +1,26 @@
+{
+  "name": "gafas-miia",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "start": "node servidor.js",
+    "compilar": "node herramientas/compilar.js",
+    "entrenar": "node herramientas/entrenar_todo.js",
+    "tarjeta": "node herramientas/hacer_tarjeta.js",
+    "test": "node --test pruebas/"
+  },
+  "dependencies": {
+    "@google/genai": "^1.0.0",
+    "express": "^5.1.0",
+    "jpeg-js": "^0.4.4",
+    "jsqr": "^1.4.0",
+    "mysql2": "^3.24.5",
+    "onnxruntime-node": "^1.30.0",
+    "qrcode": "^1.5.4",
+    "ws": "^8.21.3"
+  },
+  "devDependencies": {
+    "docx": "^9.8.1"
+  }
+}
