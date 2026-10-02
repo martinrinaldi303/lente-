@@ -19,6 +19,7 @@
      lienzo queda transparente, igual que en el prisma. */
   #vista { position: relative; width: 100%; aspect-ratio: 4 / 3; background: #000; border-radius: 6px; overflow: hidden; }
   #video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; }
+  #cajas { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
   #recuadro { position: absolute; top: 20%; bottom: 20%; left: 27.5%; right: 27.5%; border: 1px dashed var(--acento); border-radius: 2px; pointer-events: none; }
   #hud { position: absolute; top: 3%; right: 3%; width: 58%; aspect-ratio: 2 / 1; image-rendering: pixelated; mix-blend-mode: screen; pointer-events: none; }
   #hud.espejo { transform: scaleX(-1); }
@@ -54,7 +55,8 @@
       <h2>Lo que se ve a través de las gafas</h2>
       <div id="vista">
         <video id="video" muted playsinline></video>
-        <div id="recuadro" title="La red mira lo que está dentro de este recuadro"></div>
+        <canvas id="cajas" width="640" height="480"></canvas>
+        <div id="recuadro" title="Para ENSEÑAR un objeto, ponelo dentro de este recuadro"></div>
         <canvas id="hud" width="128" height="64"></canvas>
         <button id="prender">Prender la cámara</button>
       </div>
@@ -64,6 +66,7 @@
         <button id="mic" disabled>Micrófono</button>
         <label><input type="checkbox" id="espejo"> Espejar (como se manda al prisma)</label>
         <label><input type="checkbox" id="oscurecer"> Fondo oscuro detrás del texto (más legible, menos real)</label>
+        <label><input type="checkbox" id="verCajas"> Ver todo lo que marca el detector y el círculo de la mirada (sólo para probar)</label>
       </div>
       <div class="fila" id="estado">Desconectado.</div>
       <div id="aviso" role="status" hidden></div>
@@ -77,7 +80,8 @@
         <button id="olvidar" disabled>Olvidar</button>
       </div>
       <ul style="margin-top:10px">
-        <li>La red mira sólo lo que está dentro del recuadro punteado: el objeto tiene que llenarlo.</li>
+        <li>La pantalla atiende a <b>una sola cosa: la que está en el centro de la mirada</b>, y le dibuja un recuadro celeste. Lo que el detector vea alrededor no se muestra, y el tema no cambia más de una vez cada 2 segundos.</li>
+        <li>Para <b>enseñar</b> un objeto, tiene que llenar el recuadro punteado del centro.</li>
         <li>Para enseñarle algo tuyo: escribí el nombre y apretá Enseñar. Guarda 12 cuadros.</li>
         <li>Enseñá primero <b>nada</b> (la mesa vacía) y después dos objetos o más.</li>
         <li>Abajo en la pantalla: <b>veo:</b> es lo que vos le enseñaste; <b>creo:</b> es la red entrenada con la base pública, que se equivoca más.</li>
@@ -98,8 +102,9 @@
       <ul style="margin-top:10px">
         <li>Cuando reconoce un aparato, <b>Siguiente</b> muestra sus partes.</li>
         <li>Si alguien muestra un <b>código QR</b> con su tarjeta, aparece en pantalla. Se guarda sólo si apretás Guardar.</li>
-        <li><b>Marca y modelo</b> le manda el recuadro al LLM (pide la clave de Gemini). Sólo aparatos: con una persona en el recuadro se niega.</li>
+        <li><b>Marca y modelo</b> le manda el recorte del aparato al LLM (pide la clave de DeepSeek o de Gemini). Sólo aparatos: con una persona en el recuadro se niega.</li>
         <li>Con la voz prendida, la guía la arma MIIA cuando le pedís armar o desarmar algo.</li>
+        <li>Con <b>DeepSeek</b> la conversación es por escrito: podés escribirle, o prender el micrófono y el navegador (Edge o Chrome) transcribe lo que decís y lee en voz alta lo que contesta.</li>
       </ul>
     </section>
     <section>

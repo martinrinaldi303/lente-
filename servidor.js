@@ -14,6 +14,7 @@ import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { abrirBase, sincronizarRed } from './src/base.js';
 import { Conjunto } from './src/conjunto.js';
+import { crearDetector } from './src/detector.js';
 import { extractoresDisponibles } from './src/extractores.js';
 import { FUENTE } from './src/rasgos.js';
 import { FUENTE as DINO } from './src/rasgos_dino.js';
@@ -26,9 +27,23 @@ try { process.loadEnvFile(join(RAIZ, '.env')); } catch { /* sin .env: valores po
 const HOST   = process.env.HOST || '127.0.0.1';
 const PUERTO = Number(process.env.PUERTO) || 8787;
 const TOKEN  = process.env.TOKEN_GAFAS || '';
-const CLAVE  = process.env.GEMINI_API_KEY || '';
-const MODELO = process.env.GEMINI_LIVE_MODEL || 'gemini-3.8-live';
-const MODELO_VISION = process.env.GEMINI_VISION_MODEL || 'gemini-3.8-flash';
+// Qué LLM conversa. Dos posibles, y se usa uno:
+//   deepseek → conversa por escrito y mira el aparato para «marca y modelo». No tiene audio.
+//   gemini   → Gemini Live: escucha y habla él.
+// Si no se dice con LLM=…, gana DeepSeek cuando está su clave.
+const CLAVE_GEMINI   = process.env.GEMINI_API_KEY || '';
+const CLAVE_DEEPSEEK = process.env.DEEPSEEK_API_KEY || '';
+const PEDIDO = (process.env.LLM || '').trim().toLowerCase();
+const LLM = PEDIDO === 'gemini'   ? (CLAVE_GEMINI ? 'gemini' : '')
+          : PEDIDO === 'deepseek' ? (CLAVE_DEEPSEEK ? 'deepseek' : '')
+          : CLAVE_DEEPSEEK ? 'deepseek' : CLAVE_GEMINI ? 'gemini' : '';
+const CLAVE  = LLM === 'deepseek' ? CLAVE_DEEPSEEK : LLM === 'gemini' ? CLAVE_GEMINI : '';
+const MODELO = LLM === 'deepseek' ? (process.env.DEEPSEEK_MODEL || 'deepseek-flash') : (process.env.GEMINI_LIVE_MODEL || 'gemini-3.8-live');
+const MODELO_VISION = LLM === 'deepseek' ? (process.env.DEEPSEEK_VISION_MODEL || 'deepseek-flash') : (process.env.GEMINI_VISION_MODEL || 'gemini-3.8-flash');
+const BASE_DEEPSEEK = process.env.DEEPSEEK_BASE_URL || undefined;
+const FALTA_CLAVE = PEDIDO === 'gemini' ? 'LLM=gemini y falta GEMINI_API_KEY en .env'
+                  : PEDIDO === 'deepseek' ? 'LLM=deepseek y falta DEEPSEEK_API_KEY en .env'
+                  : 'falta DEEPSEEK_API_KEY o GEMINI_API_KEY en .env';
 const VISION_AL_LLM = process.env.VISION_AL_LLM === '1';
 const DIR_ESTADO = join(RAIZ, 'estado');
 const MS_PARA_SALUDAR = 5000;
@@ -55,6 +70,11 @@ const red = RedObjetos.cargar(DIR_ESTADO, extractorPersonal.dim, extractorPerson
 let conjunto = null;
 try { conjunto = Conjunto.cargar(DIR_ESTADO, { extractores }); }
 catch (e) { console.warn(`⚠️ red general no cargada: ${e.message}. Corré «npm run entrenar» hasta el final.`); }
+// El detector dice dónde está cada objeto. Si falta el modelo, las gafas siguen
+// con las redes del recuadro del centro, como antes.
+const detector = await crearDetector();
+const FOV_DIAGONAL = Number(process.env.CAMARA_FOV_DIAGONAL) || 55;   // la Logi C270
+
 // La base (MySQL de XAMPP) es opcional: sin ella lo aprendido vive sólo en estado/.
 const base = await abrirBase({
   host: process.env.DB_HOST || '127.0.0.1', port: Number(process.env.DB_PORT) || 3306,
@@ -73,12 +93,19 @@ const guardarRed = (r) => {
   base?.guardarEjemplos(r).catch(e => console.warn(`⚠️ no se pudo guardar lo aprendido en la base: ${e.message}`));
 };
 
-// La voz y el identificador de aparatos se cargan sólo si hay clave: sin ella no
-// hace falta ni importar el SDK.
+// La voz y el identificador de aparatos se cargan sólo si hay clave, y sólo los del
+// LLM elegido: sin clave de Gemini no hace falta ni importar su SDK.
 let fabricaVoz = null, identificar = null;
-if (CLAVE) {
+if (LLM === 'deepseek') {
+  const { conectarVozDeepSeek } = await import('./src/voz_deepseek.js');
+  fabricaVoz = (manejadores) => conectarVozDeepSeek({ apiKey: CLAVE, modelo: MODELO, base: BASE_DEEPSEEK, ...manejadores });
+  fabricaVoz.modo = 'texto';
+  const { crearIdentificadorDeepSeek } = await import('./src/identificar.js');
+  identificar = crearIdentificadorDeepSeek({ apiKey: CLAVE, modelo: MODELO_VISION, base: BASE_DEEPSEEK });
+} else if (LLM === 'gemini') {
   const { conectarVoz } = await import('./src/voz_live.js');
   fabricaVoz = (manejadores) => conectarVoz({ apiKey: CLAVE, modelo: MODELO, ...manejadores });
+  fabricaVoz.modo = 'audio';
   const { GoogleGenAI } = await import('@google/genai');
   const { crearIdentificador } = await import('./src/identificar.js');
   identificar = crearIdentificador({ ia: new GoogleGenAI({ apiKey: CLAVE }), modelo: MODELO_VISION });
@@ -88,8 +115,8 @@ const app = express();
 app.disable('x-powered-by');
 app.use(express.static(join(RAIZ, 'publico')));
 app.get('/salud', (_req, res) => res.json({
-  ok: true, voz: Boolean(CLAVE), modelo: CLAVE ? MODELO : null,
-  red: red.clave, objetos: red.resumen(), pide_token: Boolean(TOKEN), base: Boolean(base),
+  ok: true, voz: Boolean(CLAVE), llm: LLM || null, modo: fabricaVoz?.modo ?? null, modelo: CLAVE ? MODELO : null,
+  red: red.clave, objetos: red.resumen(), pide_token: Boolean(TOKEN), base: Boolean(base), detector: Boolean(detector),
   red_general: conjunto && {
     clases: conjunto.clases.length,
     votantes: conjunto.miembros.map(m => ({ fuente: `${m.extractor.fuente}|${m.extractor.dim}`, peso: Number(m.peso.toFixed(3)), acierto_prueba: m.red.medicion?.acierto })),
@@ -127,7 +154,8 @@ wss.on('connection', (ws) => {
   const sesion = new Sesion({
     enviarJson: (msg) => { if (abierto()) ws.send(JSON.stringify(msg)); },
     enviarBin:  (buf) => { if (abierto()) ws.send(buf, { binary: true }); },
-    red, extractorPersonal, conjunto, identificar, registro: base, guardarRed, visionAlLlm: VISION_AL_LLM,
+    red, extractorPersonal, conjunto, detector, fovDiagonalGrados: FOV_DIAGONAL,
+    identificar, registro: base, guardarRed, visionAlLlm: VISION_AL_LLM,
   });
 
   let saludo = !TOKEN;
@@ -164,7 +192,9 @@ http.on('error', (e) => {
 
 http.listen(PUERTO, HOST, () => {
   console.log(`✅ Cerebro de las gafas en http://${HOST}:${PUERTO}`);
-  console.log(`   voz: ${CLAVE ? MODELO : 'APAGADA (falta GEMINI_API_KEY en .env)'}`);
+  console.log(`   voz: ${!CLAVE ? `APAGADA (${FALTA_CLAVE})`
+    : LLM === 'deepseek' ? `${MODELO} (DeepSeek), por escrito: en el emulador escucha y habla el navegador`
+    : `${MODELO} (Gemini Live)`}`);
   console.log(`   red propia: ${red.clave} — ${red.clases.length} objeto(s) aprendido(s)`);
   console.log(`   base de datos: ${base
     ? `${process.env.DB_NAME} en MySQL` + (ejemplosDeLaBase === null ? '' : ` — ${ejemplosDeLaBase} ejemplos recuperados`)
@@ -172,8 +202,9 @@ http.listen(PUERTO, HOST, () => {
   console.log(`   red general: ${conjunto
     ? `${conjunto.clases.length} clases, votan ${conjunto.miembros.map(m => m.extractor.fuente).join(' + ')}`
     : 'sin entrenar (npm run entrenar)'}`);
+  console.log(`   detector: ${detector ? `YOLOS-tiny, ${detector.clases.length} clases; mide con FOV diagonal de ${FOV_DIAGONAL}°` : 'APAGADO (falta modelos/yolos-tiny)'}`);
   console.log(`   marca y modelo de aparatos: ${CLAVE ? `a pedido, con ${MODELO_VISION}` : 'APAGADO (falta la clave)'}`);
-  console.log(`   cuadros al LLM: ${VISION_AL_LLM ? 'sí, 1 por segundo' : 'no'}`);
+  console.log(`   cuadros al LLM: ${VISION_AL_LLM && LLM === 'gemini' ? 'sí, 1 por segundo' : 'no'}`);
 });
 
 function apagar() {

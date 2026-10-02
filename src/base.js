@@ -94,6 +94,12 @@ export class Base {
                   [f.tipo, f.marca || null, f.modelo || null, f.seguridad, JSON.stringify(f)]);
   }
 
+  medicion({ objeto, distanciaM, velocidadKmh, llegadaS }) {
+    const finito = (v) => Number.isFinite(v) ? v : null;
+    this._encolar('INSERT INTO mediciones (cuando, objeto, distancia_m, velocidad_kmh, llegada_s, metodo) VALUES (NOW(3), ?, ?, ?, ?, ?)',
+                  [objeto, finito(distanciaM), finito(velocidadKmh), finito(llegadaS), 'tamano_aparente']);
+  }
+
   // La misma tarjeta guardada dos veces es una sola fila con el contador en 2.
   tarjeta(t) {
     const huella = createHash('sha256').update(t.contenido).digest('hex');
