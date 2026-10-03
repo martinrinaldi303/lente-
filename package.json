@@ -12,7 +12,7 @@
     "entrenar": "node herramientas/entrenar_todo.js",
     "tarjeta": "node herramientas/hacer_tarjeta.js",
     "documento": "node herramientas/hacer_documento.js",
-    "test": "node --test \"pruebas/*.test.js\"",
+    "test": "node herramientas/correr_pruebas.js",
     "pruebas-reales": "node herramientas/resumir_pruebas.js",
     "importar-myfixit": "node herramientas/importar_myfixit.js"
   },

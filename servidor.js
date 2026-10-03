@@ -43,6 +43,8 @@ const LLM = PEDIDO === 'gemini'   ? (CLAVE_GEMINI ? 'gemini' : '')
 const CLAVE  = LLM === 'deepseek' ? CLAVE_DEEPSEEK : LLM === 'gemini' ? CLAVE_GEMINI : '';
 const MODELO = LLM === 'deepseek' ? (process.env.DEEPSEEK_MODEL || 'deepseek-flash') : (process.env.GEMINI_LIVE_MODEL || 'gemini-3.8-live');
 const MODELO_VISION = LLM === 'deepseek' ? (process.env.DEEPSEEK_VISION_MODEL || 'deepseek-flash') : (process.env.GEMINI_VISION_MODEL || 'gemini-3.8-flash');
+// Si el modelo de visión de Gemini está saturado (pasó el 2-oct-2026: 503), se prueba con éste.
+const RESERVA_VISION = process.env.GEMINI_VISION_RESERVA || 'gemini-3.5-flash-lite';
 const BASE_DEEPSEEK = process.env.DEEPSEEK_BASE_URL || undefined;
 const FALTA_CLAVE = PEDIDO === 'gemini' ? 'LLM=gemini y falta GEMINI_API_KEY en .env'
                   : PEDIDO === 'deepseek' ? 'LLM=deepseek y falta DEEPSEEK_API_KEY en .env'
@@ -127,9 +129,9 @@ if (LLM === 'deepseek') {
   const { GoogleGenAI } = await import('@google/genai');
   const ia = new GoogleGenAI({ apiKey: CLAVE });
   const { crearIdentificador } = await import('./src/identificar.js');
-  identificar = crearIdentificador({ ia, modelo: MODELO_VISION });
+  identificar = crearIdentificador({ ia, modelo: MODELO_VISION, reserva: RESERVA_VISION });
   const { crearLector } = await import('./src/leer.js');
-  leer = crearLector({ ia, modelo: MODELO_VISION });
+  leer = crearLector({ ia, modelo: MODELO_VISION, reserva: RESERVA_VISION });
 }
 
 const app = express();

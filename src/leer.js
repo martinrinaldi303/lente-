@@ -17,11 +17,14 @@
 //       transcriba documentos de identidad, tarjetas ni datos personales de otro: en
 //       ese caso contesta «documento personal» y el texto vuelve vacío.
 //
-// ⚠️ SIN PROBAR contra las API reales (3-oct-2026: no había clave). Probado con un
-// cliente de mentira.
+// Con Gemini, igual que marca y modelo: si el modelo principal está saturado (503,
+// pasó el 2-oct-2026) o tarda más de 12 s, se prueba una vez con el de reserva, y el
+// error que se muestra se puede leer.
+// ⚠️ Con DeepSeek, sin probar contra la API real: la cuenta no tenía saldo.
 
 import jpeg from 'jpeg-js';
 import { MODELO as MODELO_DEEPSEEK, pedirChat } from './deepseek.js';
+import { conPlazo, motivoLegible, MS_POR_INTENTO } from './identificar.js';
 import { COLS, envolver, LINEAS_TEXTO } from './hud.js';
 
 const LARGO_MAXIMO = 600;
@@ -101,21 +104,27 @@ export function paginar(texto, maxPaginas = 40) {
 }
 
 // `ia` es un cliente de @google/genai. Devuelve (fotoJpeg, { traducirA }) → lectura | null.
-export function crearLector({ ia, modelo }) {
+export function crearLector({ ia, modelo, reserva = null, msPorIntento = MS_POR_INTENTO }) {
   return async (fotoJpeg, { traducirA = '' } = {}) => {
     const recorte = recorteParaLeer(fotoJpeg);
-    const respuesta = await ia.models.generateContent({
-      model: modelo,
-      contents: [{
-        role: 'user',
-        parts: [
-          { inlineData: { mimeType: 'image/jpeg', data: Buffer.from(recorte).toString('base64') } },
-          { text: pregunta(traducirA) },
-        ],
-      }],
-      config: { systemInstruction: INSTRUCCION, responseMimeType: 'application/json', responseSchema: ESQUEMA, temperature: 0.1 },
-    });
-    return normalizarLectura(JSON.parse(respuesta.text));
+    let ultimo;
+    for (const m of [modelo, ...(reserva && reserva !== modelo ? [reserva] : [])]) {
+      try {
+        const respuesta = await conPlazo(ia.models.generateContent({
+          model: m,
+          contents: [{
+            role: 'user',
+            parts: [
+              { inlineData: { mimeType: 'image/jpeg', data: Buffer.from(recorte).toString('base64') } },
+              { text: pregunta(traducirA) },
+            ],
+          }],
+          config: { systemInstruction: INSTRUCCION, responseMimeType: 'application/json', responseSchema: ESQUEMA, temperature: 0.1 },
+        }), msPorIntento);
+        return normalizarLectura(JSON.parse(respuesta.text));
+      } catch (e) { ultimo = e; }
+    }
+    throw new Error(motivoLegible(ultimo));
   };
 }
 
