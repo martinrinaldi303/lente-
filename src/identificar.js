@@ -18,9 +18,11 @@
 // Dos LLM posibles, con el mismo recorte, la misma instrucción y la misma respuesta
 // saneada: Gemini (crearIdentificador) y DeepSeek (crearIdentificadorDeepSeek).
 //
-// ⚠️ SIN PROBAR contra ninguna de las dos API reales: el 2-oct-2026 no había clave de
-// Gemini ni de DeepSeek. Lo que está probado es todo lo de alrededor, con un cliente
-// de mentira.
+// Probado contra Gemini de verdad el 2-oct-2026: `gemini-3.8-flash` contestaba 503
+// (saturado) y `gemini-3.5-flash-lite` devolvió la ficha en 2,4 s. De ahí el modelo
+// de reserva y el plazo por intento: sin ellos la pantalla quedaba más de 40 s en
+// «Mirando el aparato...».
+// ⚠️ Con DeepSeek, SIN PROBAR contra la API real: la cuenta no tenía saldo (402).
 
 import jpeg from 'jpeg-js';
 import { MODELO as MODELO_DEEPSEEK, pedirChat } from './deepseek.js';
@@ -89,22 +91,47 @@ export function normalizar(crudo) {
 const pregunta = (pista) => pista ? `La red de las gafas cree que es: ${pista}. ¿Qué aparato es, de qué marca y modelo?`
                                   : '¿Qué aparato es, de qué marca y modelo?';
 
+export const MS_POR_INTENTO = 12000;
+export function conPlazo(promesa, ms) {
+  let reloj;
+  const plazo = new Promise((_, mal) => { reloj = setTimeout(() => mal(new Error('tardó demasiado en contestar')), ms); });
+  return Promise.race([promesa, plazo]).finally(() => clearTimeout(reloj));
+}
+
+// El error de Gemini llega como un JSON metido en el mensaje. Esto lo pasa a algo
+// que se pueda leer en una pantalla de 21 letras por renglón.
+export function motivoLegible(e) {
+  let texto = String(e?.message ?? e), codigo = e?.status;
+  try { const j = JSON.parse(texto); codigo = j.error?.code ?? codigo; texto = j.error?.message ?? texto; } catch { /* no era JSON */ }
+  if (codigo === 503) return 'el modelo está saturado, probá en un rato';
+  if (codigo === 429) return 'se acabó el cupo por ahora, probá en un rato';
+  if (codigo === 401 || codigo === 403 || /API key/i.test(texto)) return 'la clave no es válida';
+  return texto;
+}
+
 // `ia` es un cliente de @google/genai. Devuelve una función (cuadroJpeg, pista, caja) → ficha | null.
-export function crearIdentificador({ ia, modelo }) {
+// Si `modelo` falla o tarda (saturado, sin cupo), se prueba una vez con `reserva`.
+export function crearIdentificador({ ia, modelo, reserva = null, msPorIntento = MS_POR_INTENTO }) {
   return async (cuadroJpeg, pista = '', caja = null) => {
     const recorte = recorteDelRecuadro(cuadroJpeg, caja);
-    const respuesta = await ia.models.generateContent({
-      model: modelo,
-      contents: [{
-        role: 'user',
-        parts: [
-          { inlineData: { mimeType: 'image/jpeg', data: Buffer.from(recorte).toString('base64') } },
-          { text: pregunta(pista) },
-        ],
-      }],
-      config: { systemInstruction: INSTRUCCION, responseMimeType: 'application/json', responseSchema: ESQUEMA, temperature: 0.2 },
-    });
-    return normalizar(JSON.parse(respuesta.text));
+    let ultimo;
+    for (const m of [modelo, ...(reserva && reserva !== modelo ? [reserva] : [])]) {
+      try {
+        const respuesta = await conPlazo(ia.models.generateContent({
+          model: m,
+          contents: [{
+            role: 'user',
+            parts: [
+              { inlineData: { mimeType: 'image/jpeg', data: Buffer.from(recorte).toString('base64') } },
+              { text: pregunta(pista) },
+            ],
+          }],
+          config: { systemInstruction: INSTRUCCION, responseMimeType: 'application/json', responseSchema: ESQUEMA, temperature: 0.2 },
+        }), msPorIntento);
+        return normalizar(JSON.parse(respuesta.text));
+      } catch (e) { ultimo = e; }
+    }
+    throw new Error(motivoLegible(ultimo));
   };
 }
 

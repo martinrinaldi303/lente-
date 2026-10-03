@@ -40,7 +40,7 @@ Para prender la voz: copiar `.env.example` a `.env` y poner una clave de DeepSee
 
 ### Probado y sin probar
 
-- **Probado:** las pruebas en frío (103 desde la décima pasada; una usa la base MySQL real); el emulador contra el servidor real, enseñando
+- **Probado:** las pruebas en frío (105 desde la décima pasada; una usa la base MySQL real); el emulador contra el servidor real, enseñando
   y reconociendo tres objetos con cuadros sintéticos; el rechazo por token y por
   origen; que el servidor no arranque abierto a la red sin token; que las redes en
   C++ aprenden una base de juguete y que el cerebro predice lo mismo que el
@@ -796,6 +796,37 @@ el reconocedor ni la voz del navegador con un micrófono real: el panel de la ap
 deja usarlo. Lo primero que hay que mirar con la clave puesta: que el modelo llame a
 las herramientas y que el JSON de marca y modelo venga bien formado.
 
+### Con las claves puestas (el mismo día, más tarde)
+
+Martín cargó las dos claves, pero en `.env.example` en vez de `.env`: el cerebro no
+las veía, y ese archivo es el que se sube a GitHub. No llegaron a subirse. Se pasaron
+a `.env` y `.env.example` quedó sin claves. **Las claves van sólo en `.env`.**
+
+Preguntándole a cada API:
+
+| | Clave | Resultado |
+|---|---|---|
+| Gemini | válida | Anda con el cupo gratuito, sin facturación |
+| DeepSeek | válida | Saldo 0: contesta 402 «Insufficient Balance». Hay que cargar saldo |
+
+Por eso en `.env` quedó `LLM=gemini`. Cuando DeepSeek tenga saldo, `LLM=deepseek`.
+
+**Probado contra Gemini de verdad, por el cerebro** (era lo que venía «sin probar»
+desde el primer día):
+
+- **La voz:** conectó con `gemini-3.8-live`; a «¿me escuchás?» contestó «Te escucho
+  fuerte y claro. ¿En qué te ayudo?» con 2,4 s de audio.
+- **Las herramientas:** a «¿qué objetos te enseñé?» llamó a `objetos_conocidos` y
+  contestó «Hasta ahora me enseñaste a Martín».
+- **Marca y modelo:** `gemini-3.8-flash` contestaba 503 (saturado) y la pantalla
+  quedaba más de 40 s en «Mirando el aparato...». Se sumó un plazo de 12 s por
+  intento y un modelo de reserva (`GEMINI_VISION_RESERVA`, `gemini-3.5-flash-lite`).
+  Con eso devolvió la ficha de una foto de un celular («genérica smartphone,
+  seguridad baja»: la foto era borrosa y lo dijo).
+
+⚠️ Sigue sin probar: el micrófono y el parlante reales del navegador (lo probado
+entra como texto), y DeepSeek contra su API (sin saldo).
+
 ## Décima pasada: memoria de objetos, aviso de vehículos, leer texto, guías, medir y firmware — 3-oct-2026
 
 **Por qué.** Martín pidió sumar todas las mejoras que quedaron listadas al revisar el
@@ -859,7 +890,8 @@ la mirada, y la instrucción le pide al modelo que **no transcriba documentos de
 identidad, tarjetas ni datos personales de otros** (contesta «documento personal» y
 las gafas dicen que no lo leen).
 
-⚠️ Sin probar contra las API reales: no había clave. Probado con un cliente de mentira.
+Probado contra Gemini de verdad al bajar la rama (ver «Al probarla en la PC», abajo).
+⚠️ Con DeepSeek, sin probar contra la API real: la cuenta no tiene saldo.
 
 ### Guías guardadas
 
@@ -938,6 +970,41 @@ rojo.
 
 **Sin probar:** todo lo que pide hardware (el firmware en una placa, el sensor, el
 pitido), las API reales (leer texto) y el aviso con vehículos de verdad.
+
+### Al probarla en la PC de Martín (el mismo día)
+
+La décima pasada se escribió en otra sesión y llegó por la rama `mejoras-gafas`. Se
+bajó, se corrió el cerebro con ella y se probó cada cosa por el WebSocket, con la
+clave de Gemini:
+
+| Qué | Resultado |
+|---|---|
+| Guías guardadas | «rcp» carga «RCP en un adulto» (12 pasos) y Siguiente avanza; «cambiar el embrague» dice que no hay guía |
+| «¿Dónde dejé…?» | Por voz, «¿dónde dejé el celular?» → «Lo vi recién en la cocina». «Persona» no se recuerda |
+| Emergencia por voz | «se está atragantando alguien» → «Llamá ya al 107 o al 911. No reemplazo a un médico» y cargó la guía de atragantamiento |
+| Medir con el sensor | Con 600 mm simulados y una notebook al centro: «Mide ≈ 18 × 10 cm» |
+| Leer texto | Un cartel de prueba: «LECHE ENTERA Vence: 14/10/2026 Conservar refrigerado entre 2 y 8 grados»; traducido: «WHOLE MILK. Expires: 14/10/2026…» |
+| Marca y modelo | Un control remoto de COCO: «Toto Stick Remote, seguridad media» |
+| Pruebas reales | El renglón llega a `estado/pruebas_reales.jsonl` |
+| El emulador | Carga con los controles nuevos y sin errores |
+
+⚠️ Lo de «¿dónde dejé el celular?» acertó por casualidad: el celular que recordaba era
+el cartel de prueba, que la red general tomó por «celular 98 %».
+
+**Lo que se arregló:**
+
+1. **`npm test` no arrancaba en Node 20** (el de Martín): la rama lo cambió a
+   `node --test "pruebas/*.test.js"`, y Node 20 no expande comodines. Ahora es
+   `herramientas/correr_pruebas.js`, que arma la lista a mano y anda con Node 20 y 22.
+2. **Leer texto fallaba igual que marca y modelo:** `gemini-3.8-flash` contestaba 503 y
+   en la pantalla quedaba el JSON crudo del error. Ahora usa la misma reserva y el
+   mismo plazo de 12 s (con el principal saturado, leyó en 13 s).
+3. **Medir:** por voz, MIIA pedía material y forma antes de medir. La herramienta
+   ahora dice que el tamaño se pide sin argumentos; material y forma son para el peso.
+
+Las 105 pruebas: 103 pasan y 2 se saltean (MySQL apagado). Sigue sin probar: el
+micrófono y el parlante reales, el firmware (no hay hardware), el aviso de vehículos
+con autos de verdad y DeepSeek (sin saldo).
 
 ## Desarmar, código y matemática — bases encontradas el 1-oct-2026
 

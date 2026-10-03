@@ -109,7 +109,7 @@ const cuerpo = [
     ['Mostrar datos y partes del aparato reconocido', 'Fichas por tipo de aparato; color medido de la imagen'],
     ['Leer la tarjeta que una persona muestra en un código QR', 'Funciona; se guarda sólo si se pide'],
     ['Guiar paso a paso para armar o desarmar', 'Funciona con guías cargadas; con voz, las redacta el asistente'],
-    ['Voz, y marca y modelo de un aparato', 'Escrito para dos LLM (DeepSeek y Gemini), **sin probar** contra ninguno: falta la clave'],
+    ['Voz, y marca y modelo de un aparato', 'Con Gemini, probado de verdad: contesta con audio, usa las herramientas y devuelve la ficha. Con DeepSeek, escrito y **sin probar**: la cuenta no tiene saldo'],
     ['Encontrar objetos en cualquier parte de la imagen', 'Detector de 80 clases: encuentra el 75 % de los objetos de las fotos de prueba'],
     ['Medir distancia y velocidad de vehículos y personas', 'Funciona con el detector. Es una estimación gruesa y **no se probó con vehículos reales**'],
     ['Las gafas físicas', '**Sin armar**'],
@@ -379,7 +379,8 @@ const cuerpo = [
   h1('15. Qué está probado y qué no'),
   tabla([1, 1], [
     ['Probado', 'Sin probar'],
-    ['Las pruebas en frío, incluida la base real', 'La conversación y la consulta de marca y modelo contra DeepSeek o Gemini'],
+    ['Las pruebas en frío, incluida la base real', 'El micrófono y el parlante reales con la voz'],
+    ['La voz y marca y modelo contra Gemini de verdad', 'La conversación y marca y modelo contra DeepSeek (sin saldo)'],
     ['El cerebro de punta a punta, con fotos de prueba y escenas reales mandadas como cuadros de cámara', 'El micrófono del navegador'],
     ['El detector contra las anotaciones de COCO', 'La distancia y la velocidad con vehículos reales'],
     ['La cámara con una webcam Logitech C270: reconoce una persona', 'El acierto con objetos propios y luz de interior'],
@@ -390,7 +391,7 @@ const cuerpo = [
 
   h1('16. Lo que sigue'),
   paso('Medir el acierto con la webcam y objetos reales con «Acertó / Se equivocó», y correr `npm run pruebas-reales`.', 'siguientes'),
-  paso('Cargar una clave de DeepSeek o de Gemini y probar la conversación, la consulta de marca y modelo y leer texto.', 'siguientes'),
+  paso('Probar la voz con el micrófono de verdad, y cargar saldo en DeepSeek para probarlo.', 'siguientes'),
   paso('Comparar las guías de primeros auxilios con la guía oficial de Cruz Roja Argentina.', 'siguientes'),
   paso('Probar la distancia, la velocidad y el aviso en la calle, y calibrar el campo de visión de la cámara.', 'siguientes'),
   paso('Comprar el XIAO, la pantalla y el sensor; cargar el programa de `firmware/gafas_xiao` y probarlo.', 'siguientes'),

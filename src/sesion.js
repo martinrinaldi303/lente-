@@ -138,7 +138,7 @@ export const HERRAMIENTAS = [
   },
   {
     name: 'medir_objeto',
-    description: 'Mide el ancho y el alto del objeto del centro de la mirada con el sensor de distancia. Con material y forma estima el peso.',
+    description: 'Mide el ancho y el alto del objeto del centro de la mirada con el sensor de distancia. Para el tamaño se llama SIN argumentos; material, forma y fondo_cm sólo hacen falta si pide el peso.',
     parameters: {
       type: 'OBJECT',
       properties: {

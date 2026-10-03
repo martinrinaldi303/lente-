@@ -3,7 +3,7 @@ import { test } from 'node:test';
 import jpeg from 'jpeg-js';
 import { CATEGORIAS_COCO, recortar, recuadroCon } from '../herramientas/recortar_coco.js';
 import { FICHAS, paginasDe } from '../src/fichas.js';
-import { crearIdentificador, normalizar, recorteDelRecuadro } from '../src/identificar.js';
+import { crearIdentificador, motivoLegible, normalizar, recorteDelRecuadro } from '../src/identificar.js';
 import { BIN_JPEG, empaquetar } from '../src/protocolo.js';
 import { DIM, FUENTE } from '../src/rasgos.js';
 import { RedObjetos } from '../src/red_objetos.js';
@@ -151,6 +151,40 @@ test('al LLM le va sólo el recuadro, y su respuesta se sanea', async () => {
   assert.equal(f.caracteristicas.length, 6);
   assert.deepEqual(f.partes, []);
   assert.equal(normalizar({ tipo: '' }), null);
+});
+
+test('si el modelo está saturado o tarda, se prueba con el de reserva; si fallan los dos, el motivo se puede leer', async () => {
+  const cuadro = cuadroJpeg('taza', azar(53));
+  const saturado = new Error(JSON.stringify({ error: { code: 503, message: 'This model is currently experiencing high demand.', status: 'UNAVAILABLE' } }));
+  const ficha = { text: JSON.stringify({ tipo: 'celular', seguridad: 'baja', caracteristicas: [], partes: [] }) };
+  const pedidos = [];
+  const ia = (respuestas) => ({ models: { generateContent: async (p) => { pedidos.push(p.model); const r = respuestas[p.model]; if (r instanceof Error) throw r; return r; } } });
+
+  // El principal contesta 503 (lo que pasó de verdad el 2-oct-2026): contesta el de reserva.
+  const f = await crearIdentificador({ ia: ia({ grande: saturado, chico: ficha }), modelo: 'grande', reserva: 'chico' })(cuadro);
+  assert.equal(f.tipo, 'celular');
+  assert.deepEqual(pedidos, ['grande', 'chico']);
+  // El principal se cuelga: a los 30 ms se lo deja y se prueba el otro.
+  const colgado = { models: { generateContent: (p) => p.model === 'grande' ? new Promise(() => {}) : Promise.resolve(ficha) } };
+  assert.equal((await crearIdentificador({ ia: colgado, modelo: 'grande', reserva: 'chico', msPorIntento: 30 })(cuadro)).tipo, 'celular');
+  // Fallan los dos: sale un motivo corto, no el JSON crudo de la API.
+  await assert.rejects(crearIdentificador({ ia: ia({ grande: saturado, chico: saturado }), modelo: 'grande', reserva: 'chico' })(cuadro), /^Error: el modelo está saturado, probá en un rato$/);
+  assert.equal(motivoLegible(new Error('{"error":{"code":429,"message":"quota"}}')), 'se acabó el cupo por ahora, probá en un rato');
+  assert.equal(motivoLegible(new Error('API key not valid. Please pass a valid API key.')), 'la clave no es válida');
+  assert.equal(motivoLegible(new Error('otra cosa')), 'otra cosa');
+});
+
+test('leer texto también prueba con el modelo de reserva, y el motivo se puede leer', async () => {
+  const { crearLector } = await import('../src/leer.js');
+  const foto = cuadroJpeg('taza', azar(54));
+  const saturado = new Error(JSON.stringify({ error: { code: 503, message: 'high demand', status: 'UNAVAILABLE' } }));
+  const lectura = { text: JSON.stringify({ tipo: 'etiqueta', texto: 'Vence: 14/10/2026' }) };
+  const pedidos = [];
+  const ia = (respuestas) => ({ models: { generateContent: async (p) => { pedidos.push(p.model); const r = respuestas[p.model]; if (r instanceof Error) throw r; return r; } } });
+  const l = await crearLector({ ia: ia({ grande: saturado, chico: lectura }), modelo: 'grande', reserva: 'chico' })(foto);
+  assert.equal(l.texto, 'Vence: 14/10/2026');
+  assert.deepEqual(pedidos, ['grande', 'chico']);
+  await assert.rejects(crearLector({ ia: ia({ grande: saturado, chico: saturado }), modelo: 'grande', reserva: 'chico' })(foto), /^Error: el modelo está saturado, probá en un rato$/);
 });
 
 test('el LLM de voz tiene la herramienta de aparatos y ninguna de personas', () => {
