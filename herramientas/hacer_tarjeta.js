@@ -4,6 +4,10 @@
 //
 // Deja un PNG en tarjetas/. En la tarjeta va lo que vos pongas y nada más: es la
 // forma de decir quién sos sin que nadie lo tenga que averiguar.
+//
+// También arma el cartel de un LUGAR, para pegar en la pared (ver src/memoria.js):
+//
+//   npm run tarjeta -- --lugar cocina
 
 import { mkdirSync } from 'node:fs';
 import { dirname, join } from 'node:path';
@@ -24,13 +28,17 @@ export function vcard({ nombre, org, cargo, urls = [], nota }) {
   ].filter(Boolean).join('\n');
 }
 
+// El texto del cartel de un lugar, el que entiende lugarDeQr().
+export const cartelDeLugar = (lugar) => `LUGAR:${String(lugar).replace(/\s+/g, ' ').trim()}`;
+
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const args = process.argv.slice(2);
-  const nombre = args[0] && !args[0].startsWith('--') ? args[0] : null;
-  if (!nombre) { console.error('uso: npm run tarjeta -- "Tu nombre" [--org X] [--cargo X] [--url https://…]… [--nota X]'); process.exit(2); }
   const uno = (clave) => { const i = args.indexOf(clave); return i >= 0 ? args[i + 1] : undefined; };
+  const lugar = uno('--lugar');
+  const nombre = lugar ? `lugar ${lugar}` : args[0] && !args[0].startsWith('--') ? args[0] : null;
+  if (!nombre) { console.error('uso: npm run tarjeta -- "Tu nombre" [--org X] [--cargo X] [--url https://…]… [--nota X]\n     npm run tarjeta -- --lugar cocina'); process.exit(2); }
   const urls = args.flatMap((a, i) => a === '--url' && args[i + 1] ? [args[i + 1]] : []);
-  const texto = vcard({ nombre, org: uno('--org'), cargo: uno('--cargo'), urls, nota: uno('--nota') });
+  const texto = lugar ? cartelDeLugar(lugar) : vcard({ nombre, org: uno('--org'), cargo: uno('--cargo'), urls, nota: uno('--nota') });
   const dir = join(RAIZ, 'tarjetas');
   mkdirSync(dir, { recursive: true });
   const archivo = join(dir, nombre.toLowerCase().replace(/[^a-z0-9áéíóúñ]+/gi, '_').replace(/^_|_$/g, '') + '.png');

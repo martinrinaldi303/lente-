@@ -23,3 +23,9 @@ modelos/
 
 # ── Tarjetas QR generadas (son datos de quien las hace) ──
 tarjetas/
+
+# ── Guías importadas de MyFixit (CC BY-NC-SA: no se redistribuyen acá) ──
+guias/myfixit/
+
+# ── La configuración del firmware (clave del WiFi y token) ─
+firmware/gafas_xiao/config.h

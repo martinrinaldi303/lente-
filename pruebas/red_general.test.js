@@ -8,7 +8,7 @@ import jpeg from 'jpeg-js';
 import { BINARIO } from '../herramientas/compilar.js';
 import { entrenarTodo } from '../herramientas/entrenar_todo.js';
 import { exportar, vaAPrueba } from '../herramientas/exportar_rasgos.js';
-import { Conjunto } from '../src/conjunto.js';
+import { Conjunto, votantes } from '../src/conjunto.js';
 import { EXTRACTORES } from '../src/extractores.js';
 import { leerRasgos } from '../src/formato_rasgos.js';
 import { regionCompleta } from '../src/imagen.js';
@@ -153,4 +153,11 @@ test('el entrenador rechaza archivos que no son de rasgos', { skip: SIN_BINARIO 
     assert.throws(() => execFileSync(BINARIO, [basura, basura, join(dir, 'x.json')], { stdio: 'pipe' }));
     assert.equal(existsSync(join(dir, 'x.json')), false);
   } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
+test('con DINOv2 vota sólo él; sin el modelo, votan los hechos a mano', () => {
+  const propios = Object.values(EXTRACTORES), dino = { fuente: 'dino_s', dim: 384, extraer: () => [] };
+  assert.deepEqual(votantes([...propios, dino]), [dino]);
+  assert.deepEqual(votantes(propios), propios);
+  assert.deepEqual(votantes([...propios, dino], { todos: true }), [...propios, dino]);
 });

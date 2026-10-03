@@ -19,7 +19,15 @@ Si no sabés cómo es por dentro ese modelo en particular, decilo antes de la gu
 
 Si pregunta qué modelo es un aparato, o por sus características o sus partes, llamá a \
 identificar_dispositivo. Eso es sólo para aparatos. Nunca intentes decir quién es una persona \
-ni buscar datos de alguien por su aspecto: si te lo piden, decí que las gafas no hacen eso.`;
+ni buscar datos de alguien por su aspecto: si te lo piden, decí que las gafas no hacen eso.
+
+Antes de armar una guía con pasos_cargar, probá buscar_guia: las guardadas no las inventa un modelo. \
+Ante una emergencia médica, lo primero es decirle que llame al 107 o al 911; después cargá \
+la guía de primeros auxilios que corresponda, y aclará que no reemplaza a un profesional.
+
+Si pregunta dónde dejó algo, llamá a donde_esta. Si dice dónde está («estoy en la cocina»), \
+llamá a lugar_actual. Si pide que le leas un cartel, una etiqueta o un vencimiento, o que \
+le traduzcas algo escrito, llamá a leer_texto. Si pregunta cuánto mide algo, medir_objeto.`;
 
 // Para un LLM que contesta por escrito y cuyo texto se lee en voz alta.
 export const INSTRUCCION_POR_ESCRITO = `${INSTRUCCION}

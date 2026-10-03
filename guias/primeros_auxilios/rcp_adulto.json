@@ -1,0 +1,20 @@
+{
+  "titulo": "RCP en un adulto",
+  "palabras": ["rcp", "reanimacion", "paro", "no respira", "desmayo", "inconsciente", "masaje cardiaco", "dea"],
+  "fuente": "Pautas generales de reanimación (ILCOR 2020, Cruz Roja). Antes de confiar en ella, compararla con la guía de Cruz Roja Argentina.",
+  "aviso": "No reemplaza un curso de RCP. En Argentina: 107 (emergencias médicas) o 911.",
+  "pasos": [
+    "Mirá que no haya peligro para vos",
+    "Tocale los hombros y preguntale fuerte si está bien",
+    "Si no responde, llamá al 107 o 911 y pedí un DEA",
+    "Poné el altavoz: así seguís con las manos libres",
+    "Mirá si respira normal, no más de 10 segundos",
+    "Si no respira o boquea, empezá compresiones ya",
+    "Manos en el centro del pecho, brazos rectos",
+    "Hundí 5 a 6 cm, de 100 a 120 veces por minuto",
+    "Dejá que el pecho vuelva entero en cada una",
+    "Si sabés: 30 compresiones y 2 ventilaciones",
+    "Si llega un DEA, prendelo y hacé lo que dice",
+    "No pares hasta que llegue ayuda o respire"
+  ]
+}

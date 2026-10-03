@@ -1,0 +1,22 @@
+# Las pruebas en frío, en cada push y en cada pull request.
+# Las que necesitan MySQL o los modelos bajados (DINOv2, YOLOS) se saltean solas.
+name: pruebas
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  pruebas:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # El entrenador en C++: con él corren también las pruebas de las redes de MIIA.
+      - run: npm run compilar
+      - run: npm test

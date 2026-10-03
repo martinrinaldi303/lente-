@@ -14,7 +14,19 @@
 import { join } from 'node:path';
 import { EXTRACTORES } from './extractores.js';
 import { regionCentral } from './imagen.js';
+import { FUENTE as DINO } from './rasgos_dino.js';
 import { RedGeneral } from './red_general.js';
+
+// Qué extractores votan en vivo. Medido el 2-oct-2026 (estado/medicion_conjunto.json,
+// 67 clases, 1.948 fotos de prueba): DINOv2 solo acierta 91,2 % ± 1,3 y los tres
+// votando, 91,3 % ± 1,3. Es lo mismo. Los dos hechos a mano no suman y cuestan dos
+// extracciones más por cuadro y por cada recorte dudoso. Con DINOv2 vota sólo él;
+// sin el modelo bajado votan los hechos a mano, que quedan de respaldo.
+// `todos` (VOTANTES=todos en .env) vuelve al voto de los tres, para comparar.
+export function votantes(extractores, { todos = false } = {}) {
+  const dino = extractores.find(e => e.fuente === DINO);
+  return todos || !dino ? extractores : [dino];
+}
 
 export function archivoDeRed(dir, e) {
   return join(dir, `red_general_${e.fuente}_${e.dim}.json`);

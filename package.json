@@ -3,13 +3,18 @@
   "version": "0.1.0",
   "private": true,
   "type": "module",
+  "engines": {
+    "node": ">=22"
+  },
   "scripts": {
     "start": "node servidor.js",
     "compilar": "node herramientas/compilar.js",
     "entrenar": "node herramientas/entrenar_todo.js",
     "tarjeta": "node herramientas/hacer_tarjeta.js",
     "documento": "node herramientas/hacer_documento.js",
-    "test": "node --test pruebas/"
+    "test": "node --test \"pruebas/*.test.js\"",
+    "pruebas-reales": "node herramientas/resumir_pruebas.js",
+    "importar-myfixit": "node herramientas/importar_myfixit.js"
   },
   "dependencies": {
     "@google/genai": "^1.0.0",

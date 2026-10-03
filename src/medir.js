@@ -119,3 +119,30 @@ export function alcanceM(clase, focalPx, minimoPx = 20) {
 export function focalDesdeFovDiagonal(anchoPx, altoPx, fovDiagonalGrados) {
   return Math.hypot(anchoPx, altoPx) / 2 / Math.tan(fovDiagonalGrados * RAD / 2);
 }
+
+// ── Objetos chicos: tamaño con el sensor láser ─────────────────────────────
+//
+// Con el VL53L1X en las gafas, la distancia la da el sensor y el tamaño en píxeles,
+// el recuadro del detector. El sensor mide lo que tiene adelante, en un cono angosto
+// (unos 27°) apuntado al centro: vale para el objeto que está en el medio de la
+// mirada, no para uno del costado. Y mide hasta la cara de adelante del objeto.
+//
+// Error esperable: el del FOV de la cámara (calibrar con calibrarFocal), más lo que
+// el recuadro del detector le sobra o le falta al objeto. Del orden de ±10 %.
+
+export function tamanoDeCajaCm(caja, distanciaMm, focalPx) {
+  return {
+    anchoCm: tamanoRealMm(caja.ancho, distanciaMm, focalPx) / 10,
+    altoCm:  tamanoRealMm(caja.alto, distanciaMm, focalPx) / 10,
+  };
+}
+
+// «Mide ≈ 15 × 8 cm» o, de un metro para arriba, «Mide ≈ 1,2 × 0,8 m».
+export function renglonDeTamano({ anchoCm, altoCm }) {
+  if (Math.max(anchoCm, altoCm) >= 100) {
+    const m = (cm) => (cm / 100).toFixed(1).replace('.', ',');
+    return `Mide ≈ ${m(anchoCm)} × ${m(altoCm)} m`;
+  }
+  const cm = (v) => Math.max(1, Math.round(v));
+  return `Mide ≈ ${cm(anchoCm)} × ${cm(altoCm)} cm`;
+}

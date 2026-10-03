@@ -1,0 +1,17 @@
+{
+  "titulo": "Quemadura",
+  "palabras": ["quemadura", "quemado", "quemo", "fuego", "agua hirviendo", "aceite"],
+  "fuente": "Pautas generales de primeros auxilios (ILCOR 2020, Cruz Roja). Antes de confiar en ella, compararla con la guía de Cruz Roja Argentina.",
+  "aviso": "No reemplaza un curso de primeros auxilios.",
+  "pasos": [
+    "Si es eléctrica, cortá la corriente antes de tocar",
+    "Alejá a la persona de lo que la quemó",
+    "Enfriá con agua corriente fresca 20 minutos",
+    "Nada de hielo, manteca, pasta dental ni cremas",
+    "Sacá anillos, relojes y ropa que no esté pegada",
+    "No revientes las ampollas",
+    "Cubrí con film o un paño limpio, sin apretar",
+    "Llamá al 107 o 911 si es grande o profunda",
+    "También si es en cara, manos, genitales o eléctrica"
+  ]
+}
