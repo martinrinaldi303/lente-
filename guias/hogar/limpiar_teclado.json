@@ -1,0 +1,15 @@
+{
+  "titulo": "Limpiar el teclado",
+  "palabras": ["limpiar", "teclado", "teclas", "notebook", "migas"],
+  "aparatos": ["teclado", "notebook"],
+  "fuente": "Escrita para las gafas, 3-oct-2026.",
+  "pasos": [
+    "Apagá la computadora y desenchufala",
+    "Si es inalámbrico, sacale las pilas",
+    "Dalo vuelta y golpealo suave para que caigan migas",
+    "Soplá entre las teclas con aire comprimido",
+    "Pasá un paño apenas húmedo con alcohol isopropílico",
+    "Nunca tires líquido directo sobre las teclas",
+    "Dejalo secar 10 minutos antes de prenderla"
+  ]
+}

@@ -42,6 +42,12 @@
   #registro { height: 260px; overflow-y: auto; font: 13px/1.5 ui-monospace, Consolas, monospace; white-space: pre-wrap; overflow-wrap: anywhere; }
   #registro .yo { color: var(--acento); }
   #registro .sis { color: var(--tenue); }
+  select, input[type=range] { font: inherit; color: var(--texto); background: #20252c; border: 1px solid var(--borde); border-radius: 6px; padding: 6px 8px; min-width: 0; }
+  input[type=range] { padding: 0; flex: 1 1 120px; }
+  #guiaLocal { flex: 1 1 160px; }
+  /* El aviso de un vehículo: un borde rojo que titila sobre la imagen. */
+  #vista.alerta { outline: 4px solid #ff4d4d; outline-offset: -4px; animation: titilar .25s steps(2) 6; }
+  @keyframes titilar { 50% { outline-color: transparent; } }
   ul { margin: 0; padding-left: 18px; color: var(--tenue); }
 </style>
 </head>
@@ -105,6 +111,43 @@
         <li><b>Marca y modelo</b> le manda el recorte del aparato al LLM (pide la clave de DeepSeek o de Gemini). Sólo aparatos: con una persona en el recuadro se niega.</li>
         <li>Con la voz prendida, la guía la arma MIIA cuando le pedís armar o desarmar algo.</li>
         <li>Con <b>DeepSeek</b> la conversación es por escrito: podés escribirle, o prender el micrófono y el navegador (Edge o Chrome) transcribe lo que decís y lee en voz alta lo que contesta.</li>
+      </ul>
+    </section>
+    <section>
+      <h2>Más funciones</h2>
+      <div class="fila" style="margin-top:0">
+        <input type="text" id="donde" maxlength="32" placeholder="¿dónde dejé…? (llaves, celular)" aria-label="Objeto a buscar">
+        <button id="buscarDonde" disabled>Buscar</button>
+      </div>
+      <div class="fila">
+        <input type="text" id="lugar" maxlength="32" placeholder="estoy en… (cocina, taller)" aria-label="Lugar actual">
+        <button id="marcarLugar" disabled>Marcar lugar</button>
+      </div>
+      <div class="fila">
+        <button id="leer" disabled>Leer texto</button>
+        <label>Traducir al <select id="traducir"><option value="">no traducir</option><option>castellano</option><option>inglés</option><option>portugués</option></select></label>
+      </div>
+      <div class="fila">
+        <select id="guiaLocal" aria-label="Guía guardada"><option value="">guías guardadas…</option></select>
+        <button id="cargarGuia" disabled>Cargar guía</button>
+      </div>
+      <div class="fila">
+        <label><input type="checkbox" id="sensor"> Sensor de distancia (simulado)</label>
+        <input type="range" id="sensorMm" min="100" max="4000" step="50" value="600" aria-label="Distancia simulada en milímetros">
+        <span id="sensorTexto">60 cm</span>
+      </div>
+      <div class="fila">
+        <span>Prueba real:</span>
+        <button id="acerto" disabled>✓ Acertó</button>
+        <input type="text" id="real" maxlength="16" placeholder="si no, ¿qué era?" aria-label="Qué era en realidad">
+        <button id="fallo" disabled>✗ Se equivocó</button>
+      </div>
+      <ul style="margin-top:10px">
+        <li><b>¿Dónde dejé…?</b> recuerda cuándo y dónde vio cada <b>objeto</b> (nunca personas). El lugar lo marcás vos, o un QR que diga <code>LUGAR:cocina</code> (<code>npm run tarjeta -- --lugar cocina</code>).</li>
+        <li><b>Leer texto</b> le manda el centro de la imagen al LLM y lo lee en voz alta. No lee documentos personales.</li>
+        <li>Las <b>guías guardadas</b> (primeros auxilios, hogar) andan sin LLM y sin internet. Ante una emergencia, primero llamá al 107 o al 911.</li>
+        <li>Si un vehículo viene hacia la cámara y está por llegar, la pantalla dice <b>¡CUIDADO!</b> y suena un pitido. Es una ayuda: no reemplaza mirar.</li>
+        <li><b>Prueba real</b>: con la webcam y objetos de verdad, apretá Acertó o Se equivocó. Después, <code>npm run pruebas-reales</code> te dice cuánto acierta.</li>
       </ul>
     </section>
     <section>

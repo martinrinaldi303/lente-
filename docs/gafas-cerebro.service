@@ -1,0 +1,20 @@
+# gafas-cerebro.service — el cerebro de las gafas como servicio de la Raspberry Pi.
+# Arranca solo al prender y se reinicia si se cae. Instalación en docs/raspberry.md.
+#
+# Cambiar «pi» y la carpeta si el usuario o la ruta son otros.
+
+[Unit]
+Description=Cerebro de las gafas (servidor.js)
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=pi
+WorkingDirectory=/home/pi/lente-
+ExecStart=/usr/bin/node servidor.js
+Restart=on-failure
+RestartSec=3
+
+[Install]
+WantedBy=multi-user.target

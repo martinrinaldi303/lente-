@@ -9,7 +9,9 @@
 // lo hacía (escribir sin voz, «Siguiente» sin guía, la cámara esperando un permiso
 // que nadie veía) y desde afuera parecía que no andaba nada.
 
-const BIN_AUDIO_SUBE = 0x01, BIN_JPEG = 0x02, BIN_AUDIO_BAJA = 0x03;
+const BIN_AUDIO_SUBE = 0x01, BIN_JPEG = 0x02, BIN_AUDIO_BAJA = 0x03, BIN_FOTO = 0x04;
+const MAX_FOTO = 480 * 1024;                                             // el tope de src/protocolo.js
+const MS_SENSOR = 500;                                                   // el sensor simulado manda 2 lecturas por segundo
 const CAM_ANCHO = 640, CAM_ALTO = 480, CAM_FPS = 2, CAM_CALIDAD = 0.7;   // VGA: lo que da un OV2640 a pocos cuadros por segundo
 const MIC_HZ = 16000, PARLANTE_HZ = 24000;
 const MUESTRAS_POR_PAQUETE = 1600;                                       // 100 ms
@@ -140,7 +142,8 @@ function habilitar() {
   const si = conectado();
   // La cámara NO depende del cerebro: se puede prender siempre para ver la imagen.
   // Sin conexión los cuadros no van a ningún lado y la red no opina.
-  for (const id of ['ensenar', 'olvidar', 'identificar', 'guardarTarjeta', 'demo', 'anterior', 'siguiente']) $(id).disabled = !si;
+  for (const id of ['ensenar', 'olvidar', 'identificar', 'guardarTarjeta', 'demo', 'anterior', 'siguiente',
+                    'buscarDonde', 'marcarLugar', 'leer', 'cargarGuia', 'acerto', 'fallo']) $(id).disabled = !si;
   // Lo que depende de la voz se apaga con ella, y dice por qué.
   for (const id of ['mic', 'enviar', 'texto']) $(id).disabled = !(si && vozLista);
   const motivo = !si ? 'sin conexión con el cerebro' : vozLista ? '' : `la voz está apagada: ${FALTA_CLAVE}`;
@@ -169,6 +172,7 @@ function conectar() {
     habilitar();
     mostrarEstado('Conectado al cerebro.');
     anotar('sis', 'conectado al cerebro');
+    cargarListaDeGuias();
   };
   ws.onmessage = (ev) => {
     if (typeof ev.data !== 'string') return alBinario(new Uint8Array(ev.data));
@@ -178,6 +182,9 @@ function conectar() {
     else if (msg.t === 'dicho') { anotar(msg.quien, msg.texto); if (modoVoz === 'texto' && msg.quien === 'miia') decir(msg.texto); }
     else if (msg.t === 'aviso') avisar(msg.texto);
     else if (msg.t === 'cajas') dibujarCajas(msg);
+    else if (msg.t === 'decir') { anotar('miia', msg.texto); ultimoDicho = null; decir(msg.texto); }
+    else if (msg.t === 'alerta') alertar(msg);
+    else if (msg.t === 'foto') mandarFoto();
     else if (msg.t === 'estado') {
       const nombres = { sin_clave: `apagada (${FALTA_CLAVE})`, conectando: 'conectando…', lista: 'lista', cerrada: 'cerrada', error: 'error' };
       if (msg.modo && msg.modo !== modoVoz) { apagarMic(); modoVoz = msg.modo; }
@@ -402,6 +409,82 @@ function callar() {
   if ('speechSynthesis' in window) speechSynthesis.cancel();
 }
 
+// ── El aviso de un vehículo: tres pitidos y el borde rojo ──────────────────
+// Unas gafas de verdad pitan con un buzzer o vibran: la pantalla sola no alcanza,
+// porque quien está por cruzar no está mirando el HUD.
+function alertar(msg) {
+  anotar('sis', `¡cuidado! ${msg.objeto} llega en ≈ ${msg.llegada_s} s`);
+  $('vista').classList.remove('alerta');
+  void $('vista').offsetWidth;                  // para que la animación vuelva a arrancar
+  $('vista').classList.add('alerta');
+  try {
+    parlante ??= new AudioContext({ sampleRate: PARLANTE_HZ });
+    parlante.resume();
+    const t0 = parlante.currentTime + 0.02;
+    for (let i = 0; i < 3; i++) {
+      const osc = parlante.createOscillator(), vol = parlante.createGain();
+      osc.frequency.value = 1760;
+      vol.gain.setValueAtTime(0.25, t0 + i * 0.18);
+      vol.gain.setValueAtTime(0, t0 + i * 0.18 + 0.1);
+      osc.connect(vol).connect(parlante.destination);
+      osc.start(t0 + i * 0.18);
+      osc.stop(t0 + i * 0.18 + 0.12);
+    }
+  } catch { /* sin audio: queda el borde rojo y el HUD */ }
+}
+
+// ── La foto grande, para leer texto ───────────────────────────────────────
+// El cerebro la pide con {t:"foto"}. Va a la resolución que da la cámara (con la
+// C270, 640×480) y con más calidad que los cuadros de siempre. El ESP32 la puede
+// sacar de 1600×1200. Si no hay cámara no se contesta: el cerebro usa el último cuadro.
+function mandarFoto() {
+  const v = $('video');
+  if (!camActiva || !v.videoWidth) return;
+  const lienzoFoto = document.createElement('canvas');
+  lienzoFoto.width = v.videoWidth; lienzoFoto.height = v.videoHeight;
+  lienzoFoto.getContext('2d').drawImage(v, 0, 0);
+  const comprimir = (calidad) => lienzoFoto.toBlob(async (blob) => {
+    if (!blob) return;
+    if (blob.size > MAX_FOTO && calidad > 0.5) return comprimir(calidad - 0.15);
+    enviarBin(BIN_FOTO, await blob.arrayBuffer());
+  }, 'image/jpeg', calidad);
+  comprimir(0.92);
+}
+
+// ── Sensor de distancia simulado (el VL53L1X de las gafas) ────────────────
+let relojSensor = null;
+const mmDelSensor = () => Number($('sensorMm').value);
+$('sensorMm').oninput = () => { $('sensorTexto').textContent = `${Math.round(mmDelSensor() / 10)} cm`; };
+$('sensor').onchange = (e) => {
+  clearInterval(relojSensor);
+  relojSensor = null;
+  if (e.target.checked) {
+    relojSensor = setInterval(() => enviarJson({ t: 'distancia', mm: mmDelSensor() }), MS_SENSOR);
+    anotar('sis', 'sensor de distancia simulado: prendido. Con un objeto al centro, la pantalla muestra cuánto mide.');
+  } else {
+    enviarJson({ t: 'distancia', mm: 0 });
+  }
+};
+
+// ── Guías guardadas ───────────────────────────────────────────────────────
+async function cargarListaDeGuias() {
+  try {
+    const guias = await (await fetch('/guias')).json();
+    const sel = $('guiaLocal');
+    sel.length = 1;
+    const grupos = new Map();
+    for (const g of guias) {
+      if (!grupos.has(g.tema)) {
+        const og = document.createElement('optgroup');
+        og.label = g.tema.replace(/_/g, ' ') || 'otras';
+        grupos.set(g.tema, og);
+        sel.append(og);
+      }
+      grupos.get(g.tema).append(new Option(g.titulo, g.id));
+    }
+  } catch { /* sin lista: la guía se puede pedir igual por voz */ }
+}
+
 // ── Botones ───────────────────────────────────────────────────────────────
 function enviarJson(msg) { if (conectado()) ws.send(JSON.stringify(msg)); }
 
@@ -426,6 +509,38 @@ $('identificar').onclick = () => {
   anotar('sis', 'consultando marca y modelo del aparato…');
 };
 $('guardarTarjeta').onclick = () => enviarJson({ t: 'guardar_tarjeta' });
+
+function buscarDonde() {
+  const nombre = $('donde').value.trim();
+  if (!nombre) return avisar('Escribí qué objeto buscás: llaves, celular, control…');
+  enviarJson({ t: 'donde', nombre });
+}
+$('buscarDonde').onclick = buscarDonde;
+$('donde').onkeydown = (e) => { if (e.key === 'Enter' && !$('buscarDonde').disabled) buscarDonde(); };
+$('marcarLugar').onclick = () => {
+  const nombre = $('lugar').value.trim();
+  enviarJson({ t: 'lugar', nombre });
+  anotar('sis', nombre ? `lugar: ${nombre}` : 'lugar borrado');
+};
+$('leer').onclick = () => {
+  if (!camActiva) return avisar('Prendé la cámara y apuntá al texto.');
+  const traducir_a = $('traducir').value;
+  enviarJson({ t: 'leer', ...(traducir_a ? { traducir_a } : {}) });
+  anotar('sis', traducir_a ? `leyendo y traduciendo al ${traducir_a}…` : 'leyendo el texto…');
+};
+$('cargarGuia').onclick = () => {
+  const id = $('guiaLocal').value;
+  if (!id) return avisar('Elegí una guía de la lista.');
+  enviarJson({ t: 'guia_local', consulta: id });
+  anotar('sis', `guía cargada: ${$('guiaLocal').selectedOptions[0].textContent}`);
+};
+$('acerto').onclick = () => enviarJson({ t: 'evaluar', acierto: true });
+$('fallo').onclick = () => {
+  const real = $('real').value.trim();
+  if (!real) { avisar('Escribí qué era en realidad, así la prueba sirve.'); return $('real').focus(); }
+  enviarJson({ t: 'evaluar', acierto: false, real });
+  $('real').value = '';
+};
 $('anterior').onclick = () => enviarJson({ t: 'paso', hacia: -1 });
 $('siguiente').onclick = () => enviarJson({ t: 'paso', hacia: 1 });
 

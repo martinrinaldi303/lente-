@@ -1,0 +1,18 @@
+{
+  "titulo": "Atragantamiento en un adulto",
+  "palabras": ["atragantamiento", "atragantado", "ahogando", "asfixia", "heimlich", "no puede respirar", "se ahoga"],
+  "fuente": "Pautas generales de primeros auxilios (ILCOR 2020, Cruz Roja). Antes de confiar en ella, compararla con la guía de Cruz Roja Argentina.",
+  "aviso": "Para adultos y chicos de más de 1 año. Bebés y embarazadas se atienden distinto. No reemplaza un curso.",
+  "pasos": [
+    "Preguntale: ¿te estás ahogando? ¿podés hablar?",
+    "Si tose con fuerza, que siga tosiendo",
+    "Si no puede toser ni hablar, llamá al 107 o 911",
+    "Inclinalo para adelante y sostenele el pecho",
+    "Dale 5 golpes fuertes entre los omóplatos",
+    "Si no sale, parate atrás y rodealo con los brazos",
+    "Puño arriba del ombligo, debajo de las costillas",
+    "Dale 5 compresiones hacia adentro y arriba",
+    "Alterná 5 golpes y 5 compresiones hasta que salga",
+    "Si se desmaya, acostalo y empezá RCP"
+  ]
+}

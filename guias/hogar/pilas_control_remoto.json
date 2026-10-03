@@ -1,0 +1,13 @@
+{
+  "titulo": "Cambiar pilas del control",
+  "palabras": ["pilas", "baterias", "control", "control remoto"],
+  "aparatos": ["control remoto"],
+  "fuente": "Escrita para las gafas, 1-oct-2026.",
+  "pasos": [
+    "Dar vuelta el control remoto",
+    "Correr la tapa hacia abajo con el pulgar",
+    "Sacar las dos pilas viejas",
+    "Poner las nuevas mirando el signo + de cada lado",
+    "Cerrar la tapa hasta que haga clic"
+  ]
+}

@@ -40,7 +40,7 @@ Para prender la voz: copiar `.env.example` a `.env` y poner una clave de DeepSee
 
 ### Probado y sin probar
 
-- **Probado:** las 82 pruebas en frío (una usa la base MySQL real); el emulador contra el servidor real, enseñando
+- **Probado:** las pruebas en frío (103 desde la décima pasada; una usa la base MySQL real); el emulador contra el servidor real, enseñando
   y reconociendo tres objetos con cuadros sintéticos; el rechazo por token y por
   origen; que el servidor no arranque abierto a la red sin token; que las redes en
   C++ aprenden una base de juguete y que el cerebro predice lo mismo que el
@@ -796,6 +796,149 @@ el reconocedor ni la voz del navegador con un micrófono real: el panel de la ap
 deja usarlo. Lo primero que hay que mirar con la clave puesta: que el modelo llame a
 las herramientas y que el JSON de marca y modelo venga bien formado.
 
+## Décima pasada: memoria de objetos, aviso de vehículos, leer texto, guías, medir y firmware — 3-oct-2026
+
+**Por qué.** Martín pidió sumar todas las mejoras que quedaron listadas al revisar el
+proyecto. Todo es opcional: sin clave del LLM, sin detector o sin sensor, el cerebro
+arranca igual y cada cosa avisa qué le falta.
+
+| Qué | Dónde | Necesita |
+|---|---|---|
+| «¿Dónde dejé…?» | `src/memoria.js` | Nada: anda sin LLM |
+| Aviso de vehículo que se acerca | `src/alertas.js` | El detector |
+| Leer texto (y traducirlo) | `src/leer.js` | La clave del LLM |
+| Guías guardadas: primeros auxilios y hogar | `src/guias.js`, `guias/` | Nada: anda sin LLM y sin internet |
+| Importar manuales de iFixit (MyFixit) | `herramientas/importar_myfixit.js` | Bajar el archivo de la categoría |
+| Medir objetos con el sensor láser | `tamanoDeCajaCm` en `src/medir.js` | El detector y el VL53L1X |
+| Pruebas reales: «acertó / se equivocó» | `_evaluar` en `src/sesion.js`, `herramientas/resumir_pruebas.js` | La webcam y objetos reales |
+| Firmware del XIAO ESP32-S3 | `firmware/gafas_xiao/` | El hardware |
+| El cerebro en una Raspberry Pi | `docs/raspberry.md` | Una Pi 5 |
+
+### «¿Dónde dejé…?»
+
+Las gafas recuerdan, de cada **objeto**, la última vez que lo vieron: la hora, la
+confianza y el lugar. Entra lo que la pantalla nombra y lo que el detector marca con
+confianza ≥ 0,9 en cualquier parte del cuadro (el control remoto en el sillón, aunque
+no se lo esté mirando). **Nunca personas**: «persona» no entra, venga de donde venga.
+No se guarda ninguna imagen. Vive en `estado/memoria.json` (no va a git).
+
+Las gafas no saben dónde están. El lugar es una etiqueta que pone el usuario: «estoy
+en la cocina» (herramienta `lugar_actual`), el botón del emulador, o un **cartel QR**
+pegado en la pared que diga `LUGAR:cocina` (`npm run tarjeta -- --lugar cocina`). La
+etiqueta vale 15 minutos y después se da por vencida.
+
+⚠️ Sólo encuentra lo que alguna red conoce. Unas llaves, si no se le enseñaron con
+«Enseñar», no las ve nadie.
+
+### Aviso de vehículo
+
+La pantalla sigue atendiendo sólo lo que se mira (octava pasada), pero el auto que
+importa es el que viene de costado. `Vigia` (`src/alertas.js`) mira el cuadro
+**entero**: a cada clase de vehículo le sigue el recuadro más grande con su propio
+`Seguimiento` y avisa si alguno llega en menos de 4 s a más de 8 km/h. El aviso le
+gana a todo en la pantalla («¡CUIDADO!» durante 3 s), va a las gafas como
+`{t:"alerta"}` (pitido o vibración) y no se repite antes de 4 s.
+
+⚠️ **Es una ayuda, no un sistema de seguridad.** A 2 cuadros por segundo la velocidad
+aparece recién después de ~1,5 s de ver el vehículo: un auto rápido y cerca puede
+llegar antes del aviso. Sólo cuenta lo que viene hacia la cámara. Probado con un auto
+simulado que viene a 18 km/h desde 25 m (avisa a ~3,5 s de llegar); sin probar con
+vehículos reales.
+
+### Leer texto
+
+Carteles, etiquetas, envases, vencimientos. Leer letras no lo hacen las redes propias:
+se le manda al LLM el **centro** de una foto (80 % × 70 %), a pedido. Para que se lea,
+el cerebro le pide a las gafas una foto grande (`{t:"foto"}` → paquete `0x04`, hasta
+480 KB); el ESP32 la saca de 1600×1200. Si no llega en 2,5 s se usa el último cuadro.
+El texto queda en la pantalla en páginas de 3 renglones y, si lo pidió un botón, las
+gafas lo dicen en voz alta (`{t:"decir"}`; en el emulador lo lee el navegador).
+
+Privacidad, igual que marca y modelo: no se manda nada con una persona en el centro de
+la mirada, y la instrucción le pide al modelo que **no transcriba documentos de
+identidad, tarjetas ni datos personales de otros** (contesta «documento personal» y
+las gafas dicen que no lo leen).
+
+⚠️ Sin probar contra las API reales: no había clave. Probado con un cliente de mentira.
+
+### Guías guardadas
+
+Las guías que arma el LLM pueden equivocarse. Las de `guias/` las escribió alguien y
+se pueden revisar; andan sin LLM y sin internet. El LLM tiene la instrucción de
+buscarlas (`buscar_guia`) antes de inventar una.
+
+- **Primeros auxilios:** RCP en un adulto, atragantamiento, quemadura y sangrado
+  fuerte. Cada una empieza o sigue por «llamá al 107 o 911» y dice de dónde sale.
+  ⚠️ Están escritas a partir de las pautas generales (ILCOR 2020, Cruz Roja), **no
+  copiadas de la guía oficial**: antes de confiar en ellas hay que compararlas con la
+  de Cruz Roja Argentina. No reemplazan un curso.
+- **Hogar:** cambiar las pilas del control remoto y limpiar el teclado.
+- **MyFixit:** `npm run importar-myfixit -- datos/myfixit/Phone.json` convierte los
+  manuales de iFixit de esa categoría (formato verificado el 3-oct-2026 con
+  `jsons/Skills.json`: 53 manuales, todos convertidos y todos los pasos entran en la
+  pantalla). Cada párrafo se parte por oraciones en pedazos de 3 renglones. Están en
+  inglés y son **CC BY-NC-SA: sólo uso no comercial**; por eso `guias/myfixit/` no va
+  a git.
+
+La búsqueda compara palabras con el título y las palabras clave, sin las genéricas
+(«cambiar el embrague» encontraba «Cambiar pilas del control»).
+
+### Medir objetos
+
+Con el VL53L1X, las gafas mandan `{t:"distancia", mm}` unas veces por segundo; una
+lectura vale 1,5 s. Si el objeto del centro de la mirada tiene recuadro del
+detector, la ficha muestra «Mide ≈ 15 × 8 cm» y `medir_objeto` lo devuelve. Con el
+material y la forma estima el peso (volumen × densidad, como si fuera macizo). El
+emulador tiene un sensor simulado con una barra. Error esperable: ±10 % o más.
+
+### Pruebas reales
+
+En el emulador, «✓ Acertó» o «✗ Se equivocó» (con qué era) anotan en
+`estado/pruebas_reales.jsonl` lo que la pantalla mostraba. `npm run pruebas-reales`
+da el acierto con su margen al 95 % (Wilson), por clase, y las confusiones más
+repetidas. Es la forma de saber cuánto acierta con la webcam de verdad, que hasta
+ahora sólo se midió con fotos de Caltech y COCO.
+
+### Voto: con DINOv2, vota sólo él
+
+`estado/medicion_conjunto.json` ya lo decía: DINOv2 solo acierta 91,2 % ± 1,3 y los
+tres votando, 91,3 % ± 1,3. Los dos extractores hechos a mano no suman y cuestan dos
+extracciones más por cuadro y por cada recorte dudoso. Desde ahora, si DINOv2 está
+bajado vota sólo él (`votantes()` en `src/conjunto.js`); si no, votan los dos propios,
+que quedan de respaldo. `VOTANTES=todos` en `.env` vuelve al voto de los tres.
+
+### Firmware del XIAO ESP32-S3 Sense
+
+`firmware/gafas_xiao/gafas_xiao.ino` hace lo mismo que el emulador y habla el mismo
+protocolo: cámara a 640×480 y 2 cuadros por segundo, la foto grande a pedido, el OLED
+(con espejado para la lámina), el VL53L1X, dos botones (siguiente/anterior; leer
+texto/marca y modelo), el pitido del aviso y, con Gemini Live, micrófono y parlante.
+Los pines son los de `docs/planos/plano2_conexiones.png`.
+
+**Compilado** el 3-oct-2026 con el núcleo esp32 3.3.12 para `XIAO_ESP32S3` con PSRAM
+OPI: 35 % de la memoria de programa, 19 % de la RAM, sin advertencias. **Sin probar
+en una placa**: no hay hardware. La biblioteca de WebSocket manda `Origin: file://`
+por defecto y el cerebro lo habría rechazado; el firmware la configura para no
+mandar ninguno.
+
+### Lo demás
+
+- `npm test` corre en Linux y en Windows con Node 22 (`node --test "pruebas/*.test.js"`);
+  `package.json` pide Node 22 o más. Antes, en Linux, no arrancaba.
+- Pruebas automáticas en GitHub (`.github/workflows/pruebas.yml`): compilan el
+  entrenador en C++ y corren todo en cada push.
+- `README.en.md`: el README en inglés.
+
+**Probado:** 103 pruebas en frío. Con el entrenador compilado pasan 99 y se saltean 4
+(MySQL y los modelos bajados); sin compilarlo, se saltean también las 3 del C++. El emulador en un Chromium de verdad contra el servidor de verdad, con
+cámara simulada: la lista de guías, cargar una y recorrerla, marcar el lugar,
+«¿dónde está?» con su respuesta en voz alta, el sensor simulado, las dos pruebas
+reales anotadas, la foto grande (sale por el paquete `0x04`) y el aviso con el borde
+rojo.
+
+**Sin probar:** todo lo que pide hardware (el firmware en una placa, el sensor, el
+pitido), las API reales (leer texto) y el aviso con vehículos de verdad.
+
 ## Desarmar, código y matemática — bases encontradas el 1-oct-2026
 
 Ninguna de las tres se bajó. Lo que hay que saber antes: **las redes de MIIA
@@ -830,9 +973,12 @@ Lo que sí se puede hacer propio y sin entrenar un modelo de lenguaje:
 
 ## Lo que sigue
 
-1. Probar el emulador con la webcam real y objetos reales, y anotar cuánto acierta.
-2. Prender la voz con una clave nueva y probar una guía de desarme.
-3. Comprar el XIAO y el OLED; escribir el firmware que habla `src/protocolo.js`.
-4. Óptica y marco.
-5. Sensor de distancia y recorte del objeto, para medir de verdad.
-6. Después del 12-oct: que las gafas le consulten a MIIA (`/api/ask`).
+1. Probar el emulador con la webcam real y objetos reales, anotando con «Acertó / Se
+   equivocó», y correr `npm run pruebas-reales`.
+2. Prender la voz con una clave nueva y probar una guía de desarme y «Leer texto».
+3. Comparar las guías de primeros auxilios con la guía oficial de Cruz Roja Argentina.
+4. Comprar el XIAO, el OLED y el VL53L1X; cargar `firmware/gafas_xiao` y probarlo.
+5. Óptica y marco.
+6. Probar el aviso de vehículos en la vereda, con autos de verdad (y alguien al lado).
+7. Medir la velocidad del cerebro en una Raspberry Pi 5 (`docs/raspberry.md`).
+8. Después del 12-oct: que las gafas le consulten a MIIA (`/api/ask`).

@@ -10,10 +10,15 @@ import { componerHud, envolver, COLS } from './hud.js';
 import { interpretarTarjeta, leerQr } from './qr.js';
 import { Permanencia } from './permanencia.js';
 import { RADIO_DE_MIRADA, Seguimiento, cajaEntera, confirmar, metrosRedondos, principalDe, renglonesDeMedida } from './seguimiento.js';
-import { BIN_AUDIO_BAJA, BIN_AUDIO_SUBE, BIN_JPEG, desempaquetar, empaquetar } from './protocolo.js';
+import { BIN_AUDIO_BAJA, BIN_AUDIO_SUBE, BIN_FOTO, BIN_JPEG, desempaquetar, empaquetar } from './protocolo.js';
+import { Vigia, renglonesDeAlerta } from './alertas.js';
 import { EXTRACTORES } from './extractores.js';
 import { FICHAS, paginasDe } from './fichas.js';
+import { buscarGuia, resumenDeGuias } from './guias.js';
 import { colorDominante, regionCentral } from './imagen.js';
+import { DOCUMENTO_PERSONAL, paginar } from './leer.js';
+import { focalDesdeFovDiagonal, pesoEstimadoG, renglonDeTamano, tamanoDeCajaCm } from './medir.js';
+import { lugarDeQr } from './memoria.js';
 import { FUENTE as FUENTE_V0 } from './rasgos.js';
 import { CLASE_NADA, nombreDeClase } from './red_objetos.js';
 
@@ -35,6 +40,12 @@ const SOSPECHA_DE_PERSONA = 0.3;   // con esta confianza de «persona» ya no se
 const MS_ENTRE_MEDICIONES = 1000;  // al registro va una medición por segundo, no una por cuadro
 const PASO_CAJA_PX       = 4;      // el recuadro del emulador se mueve de a 4 px: sin esto tiembla
 const CUADROS_DE_TARJETA = 10;     // una tarjeta leída sigue en pantalla 10 cuadros (5 s) sin el QR a la vista
+const TEXTO_LEYENDO      = 'Leyendo...';
+const MS_MENSAJE         = 8000;   // una respuesta corta («llaves: hace 5 min») se va sola a los 8 s
+const MS_ALERTA          = 3000;   // lo que dura en pantalla el aviso de un vehículo
+const MS_DISTANCIA_VALIDA = 1500;  // una lectura del sensor láser vale esto; después se da por vieja
+const MS_ESPERA_FOTO     = 2500;   // si las gafas no mandan la foto grande, se lee el último cuadro
+const CONFIANZA_MEMORIA  = 0.9;    // lo que el detector marca en el resto del cuadro se recuerda si está así de seguro
 
 // Lo que el LLM puede pedirle al cerebro. La voz es lo ÚNICO que hace el LLM: ver
 // es trabajo de la red propia, y por eso existe `que_veo`.
@@ -105,6 +116,38 @@ export const HERRAMIENTAS = [
     description: 'Cierra la guía y vuelve a la pantalla normal.',
     parameters: { type: 'OBJECT', properties: {} },
   },
+  {
+    name: 'donde_esta',
+    description: 'Dice cuándo y en qué lugar vieron las gafas un OBJETO por última vez («¿dónde dejé las llaves?»). Nunca personas.',
+    parameters: { type: 'OBJECT', properties: { nombre: { type: 'STRING' } }, required: ['nombre'] },
+  },
+  {
+    name: 'lugar_actual',
+    description: 'Anota en qué lugar está el usuario («estoy en la cocina»), para recordar dónde ve cada cosa. Vacío lo borra.',
+    parameters: { type: 'OBJECT', properties: { lugar: { type: 'STRING' } }, required: ['lugar'] },
+  },
+  {
+    name: 'leer_texto',
+    description: 'Lee el texto que el usuario tiene delante (cartel, etiqueta, envase, vencimiento) y lo deja en pantalla. Tarda unos segundos. No lee documentos personales.',
+    parameters: { type: 'OBJECT', properties: { traducir_a: { type: 'STRING', description: 'Idioma al que traducirlo, si lo pide' } } },
+  },
+  {
+    name: 'buscar_guia',
+    description: 'Busca entre las guías guardadas (primeros auxilios, hogar, reparaciones) y carga la que coincida. Usala ANTES de inventar una guía con pasos_cargar.',
+    parameters: { type: 'OBJECT', properties: { consulta: { type: 'STRING' } }, required: ['consulta'] },
+  },
+  {
+    name: 'medir_objeto',
+    description: 'Mide el ancho y el alto del objeto del centro de la mirada con el sensor de distancia. Con material y forma estima el peso.',
+    parameters: {
+      type: 'OBJECT',
+      properties: {
+        material: { type: 'STRING', description: 'acero, aluminio, madera, vidrio, abs, pla, carton…' },
+        forma: { type: 'STRING', enum: ['caja', 'cilindro', 'esfera'] },
+        fondo_cm: { type: 'NUMBER', description: 'La profundidad, para una caja' },
+      },
+    },
+  },
 ];
 
 export class Sesion {
@@ -117,7 +160,8 @@ export class Sesion {
   // sabe que existe una base de datos; sólo avisa.
   constructor({ enviarJson, enviarBin, red, extractorPersonal = EXTRACTORES[FUENTE_V0], conjunto = null,
                 detector = null, fovDiagonalGrados = 55, reloj = Date.now,
-                identificar = null, registro = null, guardarRed = () => {}, visionAlLlm = false }) {
+                identificar = null, registro = null, guardarRed = () => {}, visionAlLlm = false,
+                memoria = null, guias = [], leer = null, anotarEvaluacion = null, msEsperaFoto = MS_ESPERA_FOTO }) {
     if (red.inDim !== extractorPersonal.dim || red.fuente !== extractorPersonal.fuente)
       throw new Error(`la red personal es ${red.clave} y el extractor es ${extractorPersonal.fuente}|${extractorPersonal.dim}`);
     this.enviarJson  = enviarJson;
@@ -132,6 +176,14 @@ export class Sesion {
     this.registro    = registro;
     this.guardarRed  = guardarRed;
     this.visionAlLlm = visionAlLlm;
+    // Lo de la décima pasada, todo opcional (ver PLAN.md):
+    this.memoria     = memoria;            // src/memoria.js: «¿dónde dejé…?»
+    this.guias       = guias;              // src/guias.js: guías guardadas en disco
+    this.leer        = leer;               // src/leer.js: leer texto con el LLM
+    this.anotarEvaluacion = anotarEvaluacion;   // adónde va cada «acertó / se equivocó»
+    this.msEsperaFoto = msEsperaFoto;
+    this.fov         = fovDiagonalGrados;
+    this.vigia       = new Vigia({ fovDiagonalGrados });
 
     this.voz        = null;
     this.vozEstado  = 'sin_clave';
@@ -163,6 +215,12 @@ export class Sesion {
     this.permanenciaVeo  = new Permanencia();
     this.permanenciaCreo = new Permanencia();
     this.cajaSuave  = null;       // { nombre, x0, y0, ancho, alto } — el recuadro que se dibuja, sin el temblor
+    this.alerta     = null;       // { hasta, lineas } — un vehículo por llegar: le gana a todo en la pantalla
+    this.distanciaSensor = null;  // { mm, cuando } — lo último que midió el sensor láser
+    this.tamano     = null;       // { objeto, anchoCm, altoCm, distanciaMm } del objeto del centro
+    this.esperandoFoto = null;    // la función que recibe la foto grande pedida con {t:"foto"}
+    this.leyendo    = false;
+    this.relojMensaje = null;
 
     this.cuadros = [];
     this.drenando = false;
@@ -206,6 +264,8 @@ export class Sesion {
     } else if (paquete.tipo === BIN_JPEG) {
       this.cuadrosDescartados += encolarAcotado(this.cuadros, paquete.cuerpo, TOPE_CUADROS);
       if (!this.drenando) { this.drenando = true; setImmediate(() => { this._drenar(); }); }
+    } else if (paquete.tipo === BIN_FOTO) {
+      this.esperandoFoto?.(paquete.cuerpo);     // una foto que nadie pidió se ignora
     }
     return true;
   }
@@ -244,6 +304,24 @@ export class Sesion {
         this.voz.texto(texto);
         return { ok: true };
       }
+      // Lo que se pide con un botón, sin el LLM de por medio, también se dice en voz
+      // alta: para quien ve poco, la pantalla sola no alcanza.
+      case 'donde': {
+        const r = this.ejecutar('donde_esta', { nombre: msg.nombre });
+        if (r.frase || r.motivo) this.enviarJson({ t: 'decir', texto: r.frase ?? r.motivo });
+        return r.ok === false ? r : { ok: true, ...r };
+      }
+      case 'lugar': return this.ejecutar('lugar_actual', { lugar: msg.nombre });
+      case 'leer':
+        this._leer({ traducirA: msg.traducir_a, enVozAlta: true }).then(r => { if (r.ok === false && r.motivo) this._avisar(r.motivo); });
+        return { ok: true, pendiente: true };
+      case 'guia_local': return this.ejecutar('buscar_guia', { consulta: msg.consulta });
+      case 'distancia': {
+        const mm = Number(msg.mm);
+        this.distanciaSensor = mm > 0 && mm < 10000 ? { mm, cuando: this.reloj() } : null;
+        return { ok: true };
+      }
+      case 'evaluar': return this._evaluar(msg);
       default: return { ok: false, motivo: 'Mensaje desconocido' };
     }
   }
@@ -332,7 +410,8 @@ export class Sesion {
         return { ok: true };
 
       case 'que_veo': {
-        const extra = (nombre) => ({ color: this.color ?? undefined, datos_del_tipo: FICHAS[nombre]?.datos, partes_del_tipo: FICHAS[nombre]?.partes });
+        const extra = (nombre) => ({ color: this.color ?? undefined, datos_del_tipo: FICHAS[nombre]?.datos, partes_del_tipo: FICHAS[nombre]?.partes,
+                                     tamano: this.tamano?.objeto === nombre ? renglonDeTamano(this.tamano) : undefined });
         if (this.veo) return { objeto: this.veo.nombre, confianza: Number(this.veo.confianza.toFixed(2)),
                                fuente: 'enseñado por el usuario', ...extra(this.veo.nombre) };
         if (this.creo) return { objeto: this.creo.nombre, confianza: Number(this.creo.confianza.toFixed(2)),
@@ -408,14 +487,163 @@ export class Sesion {
         this.texto = TEXTO_REPOSO;
         return { ok: true };
 
+      case 'donde_esta': {
+        if (!this.memoria) return { ok: false, motivo: 'La memoria de objetos está apagada' };
+        const r = this.memoria.dondeEsta(args.nombre);
+        this._mostrarUnRato(r.visto ? r.frase : r.motivo);
+        return r;
+      }
+
+      case 'lugar_actual': {
+        if (!this.memoria) return { ok: false, motivo: 'La memoria de objetos está apagada' };
+        const lugar = this.memoria.marcarLugar(args.lugar);
+        this._mostrarUnRato(lugar ? `Lugar: ${lugar}` : 'Lugar borrado');
+        return { ok: true, lugar };
+      }
+
+      case 'leer_texto':
+        return this._leer({ traducirA: args.traducir_a });
+
+      case 'buscar_guia': {
+        const g = buscarGuia(this.guias, args.consulta);
+        if (!g) return { ok: false, motivo: `No tengo una guía de «${String(args.consulta ?? '').trim()}»`,
+                         hay: resumenDeGuias(this.guias).slice(0, 12).map(x => x.titulo) };
+        this.pasos = { titulo: g.titulo, lista: g.pasos, i: 0 };
+        this.mostrando = 'pasos';
+        return { ok: true, titulo: g.titulo, pasos: g.pasos.length, primer_paso: g.pasos[0], fuente: g.fuente, aviso: g.aviso || undefined };
+      }
+
+      case 'medir_objeto':
+        return this._medirObjeto(args);
+
       default:
         return { ok: false, motivo: `herramienta desconocida: ${nombre}` };
     }
   }
 
+  // Una respuesta corta que se va sola: no queda tapando la ficha para siempre.
+  _mostrarUnRato(texto, ms = MS_MENSAJE) {
+    this.texto = texto;
+    this.mostrando = 'texto';
+    clearTimeout(this.relojMensaje);
+    this.relojMensaje = setTimeout(() => {
+      if (this.texto !== texto) return;
+      this.texto = TEXTO_REPOSO;
+      this._pintar();
+    }, ms);
+    this.relojMensaje.unref?.();
+  }
+
+  // ¿Hay una persona en el centro de la mirada? Antes de mandarle una foto al LLM.
+  _hayPersonaEnElCentro() {
+    const visto = this.veo ?? this.creo, general = this.ultimoGeneral;
+    return visto?.nombre === CLASE_PERSONA
+        || (general?.nombre === CLASE_PERSONA && general.confianza >= SOSPECHA_DE_PERSONA)
+        || (this.hay?.nombre === CLASE_PERSONA && this.hay.alCentro === true);
+  }
+
+  // Le pide a las gafas una foto grande ({t:"foto"}). null si no llega a tiempo.
+  _pedirFoto() {
+    return new Promise((resolver) => {
+      const plazo = setTimeout(() => { this.esperandoFoto = null; resolver(null); }, this.msEsperaFoto);
+      this.esperandoFoto = (foto) => { clearTimeout(plazo); this.esperandoFoto = null; resolver(foto); };
+      this.enviarJson({ t: 'foto' });
+    });
+  }
+
+  // Leer el texto del recuadro con el LLM. `enVozAlta`: si lo pidió un botón, las
+  // gafas lo dicen con su voz; si lo pidió el LLM, lo dice él.
+  async _leer({ traducirA = '', enVozAlta = false } = {}) {
+    if (!this.leer) return { ok: false, motivo: 'Para leer hace falta la clave del LLM' };
+    if (!this.ultimoCuadro) return { ok: false, motivo: 'No hay imagen: prendé la cámara' };
+    if (this._hayPersonaEnElCentro()) return { ok: false, motivo: 'Hay una persona en el recuadro: apuntá sólo al texto' };
+    if (this.leyendo) return { ok: false, motivo: 'Ya estoy leyendo' };
+    this.leyendo = true;
+    this.texto = TEXTO_LEYENDO;
+    this.mostrando = 'texto';
+    this._pintar();
+    try {
+      const foto = (await this._pedirFoto()) ?? this.ultimoCuadro;
+      if (this.cerrada) return { ok: false };
+      const destino = String(traducirA ?? '').trim().slice(0, 20);
+      const r = await this.leer(foto, { traducirA: destino });
+      if (this.cerrada) return { ok: false };
+      if (!r) return { ok: false, motivo: 'No veo texto que se pueda leer' };
+      if (r.tipo === DOCUMENTO_PERSONAL) return { ok: false, motivo: 'Es un documento personal: no lo leo' };
+      const dicho = r.traduccion || r.texto;
+      this.pasos = { titulo: r.traduccion ? `Texto (${destino})` : 'Texto', lista: paginar(dicho), i: 0 };
+      this.mostrando = 'pasos';
+      if (enVozAlta) this.enviarJson({ t: 'decir', texto: dicho });
+      return { ok: true, ...r, nota: 'Ya está en pantalla.' };
+    } catch (e) {
+      return { ok: false, motivo: `No pude leer: ${String(e.message).slice(0, 80)}` };
+    } finally {
+      this.leyendo = false;
+      if (this.texto === TEXTO_LEYENDO) this.texto = TEXTO_REPOSO;
+      this._pintar();
+    }
+  }
+
+  _distanciaVigente() {
+    const d = this.distanciaSensor;
+    return d && this.reloj() - d.cuando <= MS_DISTANCIA_VALIDA ? d.mm : null;
+  }
+
+  // Tamaño (y, si se dice el material, peso estimado) del objeto del centro.
+  _medirObjeto({ material, forma = 'caja', fondo_cm } = {}) {
+    const t = this.tamano;
+    if (!t) return { ok: false, motivo: !this.detector ? 'Para medir hace falta el detector'
+                                       : !this._distanciaVigente() ? 'Falta el sensor de distancia'
+                                       : 'Poné el objeto en el centro de la mirada' };
+    const decima = (v) => Math.round(v * 10) / 10;
+    const r = { ok: true, objeto: t.objeto, ancho_cm: decima(t.anchoCm), alto_cm: decima(t.altoCm),
+                distancia_cm: Math.round(t.distanciaMm / 10), metodo: 'laser', nota: 'Aproximado: ±10 % o más' };
+    let frase = `${t.objeto}: ${renglonDeTamano(t).replace('Mide ', '')}`;
+    if (material) {
+      const fondo = Number(fondo_cm);
+      try {
+        if (forma === 'caja' && !(fondo > 0)) throw new Error('para el peso de una caja falta la profundidad (fondo_cm)');
+        const dims = forma === 'caja' ? { anchoMm: t.anchoCm * 10, altoMm: t.altoCm * 10, fondoMm: fondo * 10 }
+                   : forma === 'cilindro' ? { diametroMm: t.anchoCm * 10, altoMm: t.altoCm * 10 }
+                   : { diametroMm: (t.anchoCm + t.altoCm) * 5 };
+        r.peso_estimado_g = Math.round(pesoEstimadoG({ material: String(material).toLowerCase(), forma, ...dims }));
+        r.nota = 'El peso es una estimación: volumen × densidad, como si fuera macizo';
+        frase += `, ≈ ${r.peso_estimado_g} g`;
+      } catch (e) { r.motivo_peso = e.message; }
+    }
+    this._mostrarUnRato(frase);
+    return r;
+  }
+
+  // Un vehículo por llegar: pantalla, pitido o vibración. Le gana a todo.
+  _alertar(a) {
+    this.alerta = { hasta: this.reloj() + MS_ALERTA, lineas: renglonesDeAlerta(a) };
+    this.enviarJson({ t: 'alerta', tipo: 'vehiculo', objeto: a.objeto, llegada_s: Number(a.llegadaS.toFixed(1)) });
+  }
+
+  // Prueba real: el usuario dice si lo que muestra la pantalla es lo que tiene delante.
+  _evaluar(msg) {
+    if (!this.anotarEvaluacion) return { ok: false, motivo: 'No hay dónde anotar la prueba' };
+    const objeto = this.veo ?? this.creo, acierto = Boolean(msg.acierto);
+    const real = nombreDeClase(msg.real) || (acierto ? objeto?.nombre ?? CLASE_NADA : null);
+    if (!acierto && !real) return { ok: false, motivo: 'Escribí qué era, así la prueba sirve' };
+    const fila = {
+      cuando: new Date(this.reloj()).toISOString(),
+      mostrado: objeto?.nombre ?? null,
+      confianza: objeto ? Number(objeto.confianza.toFixed(3)) : null,
+      origen: objeto ? (this.veo ? 'ensenado' : 'general') : null,
+      acierto, real,
+    };
+    this.anotarEvaluacion(fila);
+    this._mostrarUnRato(acierto ? 'Anotado: acertó' : `Anotado: era ${real}`, 2500);
+    return { ok: true, fila };
+  }
+
   cerrar() {
     this.cerrada = true;
     clearTimeout(this.relojEnsenar);
+    clearTimeout(this.relojMensaje);
+    this.esperandoFoto?.(null);
     this.cuadros.length = 0;
     this.voz?.cerrar();
     this.voz = null;
@@ -449,8 +677,15 @@ export class Sesion {
     const img = jpeg.decode(cuadro, { useTArray: true, maxResolutionInMP: 2, maxMemoryUsageInMB: 64 });
     // Un código QR se busca en el cuadro ENTERO, no sólo en el recuadro: la persona
     // lo muestra donde puede. Si se deja de ver, la tarjeta queda unos segundos.
+    // Un QR que dice LUGAR:cocina no es una tarjeta: es el cartel del lugar (memoria.js).
     const qr = leerQr(img);
-    if (qr) {
+    const lugar = lugarDeQr(qr);
+    if (lugar && this.memoria) {
+      const antes = this.memoria.lugarActual();
+      this.memoria.marcarLugar(lugar);
+      if (antes !== lugar) this._mostrarUnRato(`Lugar: ${lugar}`, 3000);
+    }
+    if (qr && !lugar) {
       if (qr !== this.tarjeta?.contenido) this.tarjeta = { ...interpretarTarjeta(qr), guardada: false };
       this.tarjeta.cuadros = 0;
     } else if (this.tarjeta && ++this.tarjeta.cuadros > CUADROS_DE_TARJETA) {
@@ -525,6 +760,16 @@ export class Sesion {
       else if (esElMismo) this.medida = this.seguimiento.agregar(principal, img.width, img.height, this.reloj());
       if (esElMismo) this.color = colorDominante(img, cajaEntera(principal.caja, img)) ?? this.color;
       this._anotarMedida();
+
+      // Los vehículos se vigilan en TODO el cuadro, no sólo en la mirada (alertas.js).
+      const alerta = this.vigia.agregar(detecciones, img.width, img.height, this.reloj());
+      if (alerta) this._alertar(alerta);
+
+      // Con el sensor láser, el tamaño del objeto del centro de la mirada.
+      const mm = this._distanciaVigente();
+      this.tamano = mm && this.hay?.caja && this.hay.alCentro && this.hay.nombre !== CLASE_PERSONA
+        ? { objeto: this.hay.nombre, distanciaMm: mm, ...tamanoDeCajaCm(this.hay.caja, mm, focalDesdeFovDiagonal(img.width, img.height, this.fov)) }
+        : null;
     }
 
     // Qué se muestra como «creo:». Hay dos opiniones: el detector, sobre el objeto que
@@ -544,6 +789,14 @@ export class Sesion {
       : objeto(det) ? det
       : det ?? cla ?? null);
     if (detecciones) this._mandarCajas(detecciones, img);
+
+    // «¿Dónde dejé…?»: lo que la pantalla nombra, y lo que el detector ve seguro en el
+    // resto del cuadro. La memoria misma no deja entrar a «persona».
+    if (this.memoria) {
+      const visto = this.veo ?? this.creo;
+      if (visto) this.memoria.vi(visto.nombre, visto.confianza);
+      for (const d of detecciones ?? []) if (d.confianza >= CONFIANZA_MEMORIA) this.memoria.vi(d.nombre, d.confianza);
+    }
     this._pintar();
   }
 
@@ -620,7 +873,11 @@ export class Sesion {
   _pintar() {
     if (this.cerrada) return;
     let titulo = 'MIIA gafas', texto = this.texto, lineas;
-    if (this.aprendiendo) {
+    if (this.alerta && this.reloj() >= this.alerta.hasta) this.alerta = null;
+    if (this.alerta) {
+      titulo = '¡CUIDADO!';
+      lineas = this.alerta.lineas;
+    } else if (this.aprendiendo) {
       const a = this.aprendiendo;
       titulo = 'Aprendiendo';
       lineas = [a.nombre, `${EJEMPLOS_POR_TANDA - a.faltan}/${EJEMPLOS_POR_TANDA}`, 'Giralo un poco'];
@@ -645,8 +902,9 @@ export class Sesion {
       titulo = paginas[i].titulo.slice(0, COLS - cuenta.length) + cuenta;
       // Si el objeto es el que sigue el detector y se pudo medir, la medida va primero.
       const medida = this.hay && objeto.nombre === this.hay.nombre ? renglonesDeMedida(this.medida) : [];
+      const tamano = this.tamano?.objeto === objeto.nombre ? [renglonDeTamano(this.tamano)] : [];
       lineas = i === 0
-        ? [...medida, ...paginas[0].lineas, this.color ? `Color: ${this.color}` : ''].filter(Boolean).slice(0, 3)
+        ? [...tamano, ...medida, ...paginas[0].lineas, this.color ? `Color: ${this.color}` : ''].filter(Boolean).slice(0, 3)
         : paginas[i].lineas;
     }
     // «veo» es lo que vos le enseñaste; «creo» es la red general, que se equivoca más.

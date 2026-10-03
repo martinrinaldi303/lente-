@@ -8,14 +8,17 @@
 
 import express from 'express';
 import { timingSafeEqual } from 'node:crypto';
+import { appendFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocketServer } from 'ws';
 import { abrirBase, sincronizarRed } from './src/base.js';
-import { Conjunto } from './src/conjunto.js';
+import { Conjunto, votantes } from './src/conjunto.js';
 import { crearDetector } from './src/detector.js';
 import { extractoresDisponibles } from './src/extractores.js';
+import { cargarGuias, resumenDeGuias } from './src/guias.js';
+import { Memoria } from './src/memoria.js';
 import { FUENTE } from './src/rasgos.js';
 import { FUENTE as DINO } from './src/rasgos_dino.js';
 import { RedObjetos } from './src/red_objetos.js';
@@ -68,7 +71,7 @@ const red = RedObjetos.cargar(DIR_ESTADO, extractorPersonal.dim, extractorPerson
 // listas de clases distintas (pasó el 2-oct-2026: una con 55 clases y dos con 40).
 // Eso no tiene que tumbar el cerebro: se avisa y se sigue sin red general.
 let conjunto = null;
-try { conjunto = Conjunto.cargar(DIR_ESTADO, { extractores }); }
+try { conjunto = Conjunto.cargar(DIR_ESTADO, { extractores: votantes(extractores, { todos: process.env.VOTANTES === 'todos' }) }); }
 catch (e) { console.warn(`⚠️ red general no cargada: ${e.message}. Corré «npm run entrenar» hasta el final.`); }
 // El detector dice dónde está cada objeto. Si falta el modelo, las gafas siguen
 // con las redes del recuadro del centro, como antes.
@@ -93,22 +96,40 @@ const guardarRed = (r) => {
   base?.guardarEjemplos(r).catch(e => console.warn(`⚠️ no se pudo guardar lo aprendido en la base: ${e.message}`));
 };
 
-// La voz y el identificador de aparatos se cargan sólo si hay clave, y sólo los del
-// LLM elegido: sin clave de Gemini no hace falta ni importar su SDK.
-let fabricaVoz = null, identificar = null;
+// «¿Dónde dejé…?» (src/memoria.js): sólo nombres de objetos, hora y lugar. Es de cada
+// uno y no se sube a git, como la red personal.
+const memoria = new Memoria({ archivo: join(DIR_ESTADO, 'memoria.json') });
+// Las guías guardadas (guias/): primeros auxilios, hogar y lo importado de MyFixit.
+const guias = cargarGuias(join(RAIZ, 'guias'));
+// Cada «acertó / se equivocó» del emulador, un renglón JSON. Se resume con
+// `npm run pruebas-reales`.
+const PRUEBAS_REALES = join(DIR_ESTADO, 'pruebas_reales.jsonl');
+const anotarEvaluacion = (fila) => {
+  try { appendFileSync(PRUEBAS_REALES, JSON.stringify(fila) + '\n'); }
+  catch (e) { console.warn(`⚠️ no se pudo anotar la prueba: ${e.message}`); }
+};
+
+// La voz, el identificador de aparatos y el lector de texto se cargan sólo si hay
+// clave, y sólo los del LLM elegido: sin clave de Gemini no hace falta ni importar su SDK.
+let fabricaVoz = null, identificar = null, leer = null;
 if (LLM === 'deepseek') {
   const { conectarVozDeepSeek } = await import('./src/voz_deepseek.js');
   fabricaVoz = (manejadores) => conectarVozDeepSeek({ apiKey: CLAVE, modelo: MODELO, base: BASE_DEEPSEEK, ...manejadores });
   fabricaVoz.modo = 'texto';
   const { crearIdentificadorDeepSeek } = await import('./src/identificar.js');
   identificar = crearIdentificadorDeepSeek({ apiKey: CLAVE, modelo: MODELO_VISION, base: BASE_DEEPSEEK });
+  const { crearLectorDeepSeek } = await import('./src/leer.js');
+  leer = crearLectorDeepSeek({ apiKey: CLAVE, modelo: MODELO_VISION, base: BASE_DEEPSEEK });
 } else if (LLM === 'gemini') {
   const { conectarVoz } = await import('./src/voz_live.js');
   fabricaVoz = (manejadores) => conectarVoz({ apiKey: CLAVE, modelo: MODELO, ...manejadores });
   fabricaVoz.modo = 'audio';
   const { GoogleGenAI } = await import('@google/genai');
+  const ia = new GoogleGenAI({ apiKey: CLAVE });
   const { crearIdentificador } = await import('./src/identificar.js');
-  identificar = crearIdentificador({ ia: new GoogleGenAI({ apiKey: CLAVE }), modelo: MODELO_VISION });
+  identificar = crearIdentificador({ ia, modelo: MODELO_VISION });
+  const { crearLector } = await import('./src/leer.js');
+  leer = crearLector({ ia, modelo: MODELO_VISION });
 }
 
 const app = express();
@@ -117,11 +138,14 @@ app.use(express.static(join(RAIZ, 'publico')));
 app.get('/salud', (_req, res) => res.json({
   ok: true, voz: Boolean(CLAVE), llm: LLM || null, modo: fabricaVoz?.modo ?? null, modelo: CLAVE ? MODELO : null,
   red: red.clave, objetos: red.resumen(), pide_token: Boolean(TOKEN), base: Boolean(base), detector: Boolean(detector),
+  guias: guias.length, objetos_recordados: memoria.vistos.size, leer: Boolean(leer),
   red_general: conjunto && {
     clases: conjunto.clases.length,
     votantes: conjunto.miembros.map(m => ({ fuente: `${m.extractor.fuente}|${m.extractor.dim}`, peso: Number(m.peso.toFixed(3)), acierto_prueba: m.red.medicion?.acierto })),
   },
 }));
+// La lista de guías, para el selector del emulador.
+app.get('/guias', (_req, res) => res.json(resumenDeGuias(guias)));
 
 const http = createServer(app);
 const wss  = new WebSocketServer({ noServer: true, maxPayload: 512 * 1024 });
@@ -156,6 +180,7 @@ wss.on('connection', (ws) => {
     enviarBin:  (buf) => { if (abierto()) ws.send(buf, { binary: true }); },
     red, extractorPersonal, conjunto, detector, fovDiagonalGrados: FOV_DIAGONAL,
     identificar, registro: base, guardarRed, visionAlLlm: VISION_AL_LLM,
+    memoria, guias, leer, anotarEvaluacion,
   });
 
   let saludo = !TOKEN;
@@ -204,11 +229,14 @@ http.listen(PUERTO, HOST, () => {
     : 'sin entrenar (npm run entrenar)'}`);
   console.log(`   detector: ${detector ? `YOLOS-tiny, ${detector.clases.length} clases; mide con FOV diagonal de ${FOV_DIAGONAL}°` : 'APAGADO (falta modelos/yolos-tiny)'}`);
   console.log(`   marca y modelo de aparatos: ${CLAVE ? `a pedido, con ${MODELO_VISION}` : 'APAGADO (falta la clave)'}`);
+  console.log(`   leer texto: ${leer ? `a pedido, con ${MODELO_VISION}` : 'APAGADO (falta la clave)'}`);
+  console.log(`   guías guardadas: ${guias.length} · objetos recordados: ${memoria.vistos.size}`);
   console.log(`   cuadros al LLM: ${VISION_AL_LLM && LLM === 'gemini' ? 'sí, 1 por segundo' : 'no'}`);
 });
 
 function apagar() {
   for (const ws of wss.clients) ws.close(1001, 'el cerebro se apaga');
+  memoria.guardar();
   base?.cerrar().catch(() => {});
   http.close(() => process.exit(0));
   setTimeout(() => process.exit(0), 1500).unref();

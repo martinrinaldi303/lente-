@@ -1,0 +1,16 @@
+{
+  "titulo": "Sangrado fuerte",
+  "palabras": ["sangrado", "sangra", "hemorragia", "corte", "herida", "sangre"],
+  "fuente": "Pautas generales de primeros auxilios (ILCOR 2020, Cruz Roja). Antes de confiar en ella, compararla con la guía de Cruz Roja Argentina.",
+  "aviso": "No reemplaza un curso. Un torniquete, sólo si te enseñaron a usarlo.",
+  "pasos": [
+    "Si podés, ponete guantes o usá una bolsa limpia",
+    "Si sangra mucho, llamá al 107 o 911",
+    "Apretá fuerte la herida con un paño limpio",
+    "Si el paño se empapa, poné otro encima: no lo saques",
+    "Mantené la presión sin soltar al menos 10 minutos",
+    "Si hay algo clavado, no lo saques",
+    "En ese caso apretá alrededor, no encima",
+    "Acostá a la persona y abrigala hasta que llegue ayuda"
+  ]
+}
