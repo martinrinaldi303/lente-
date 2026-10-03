@@ -1,0 +1,563 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"tertiary":"#2fe378","on-primary-fixed-variant":"#004c6e","secondary-container":"#00e3fd","on-primary-container":"#003751","surface-container":"#1d2025","surface":"#101318","tertiary-fixed":"#62ff95","on-surface-variant":"#bec8d2","background":"#101318","on-secondary-fixed-variant":"#004f58","on-primary":"#00344d","surface-container-high":"#272a2f","on-secondary":"#00363d","on-secondary-fixed":"#001f24","primary-fixed":"#c9e6ff","surface-bright":"#36393f","secondary":"#bdf4ff","error-container":"#93000a","primary":"#89ceff","inverse-on-surface":"#2e3036","inverse-primary":"#006591","on-tertiary-fixed-variant":"#005226","surface-variant":"#32353a","surface-tint":"#89ceff","on-tertiary-fixed":"#00210b","surface-dim":"#101318","tertiary-fixed-dim":"#2fe378","on-error":"#690005","secondary-fixed-dim":"#00daf3","surface-container-low":"#191c21","on-tertiary-container":"#003c1a","outline-variant":"#3e4850","on-background":"#e1e2e9","on-surface":"#e1e2e9","surface-container-lowest":"#0b0e13","error":"#ffb4ab","primary-container":"#0ea5e9","outline":"#88929b","on-tertiary":"#003918","primary-fixed-dim":"#89ceff","on-primary-fixed":"#001e2f","inverse-surface":"#e1e2e9","on-error-container":"#ffdad6","tertiary-container":"#00b359","on-secondary-container":"#00616d","surface-container-highest":"#32353a","secondary-fixed":"#9cf0ff"},borderRadius:{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},spacing:{"margin-panel":"0.5rem","margin":"0.75rem","space-xxl":"1.5rem","gutter":"0.5rem","space-xl":"1rem","space-lg":"0.75rem","space-xs":"0.25rem","space-sm":"0.375rem","space-md":"0.5rem","space-xxs":"0.125rem","gutter-compact":"0.25rem"},fontFamily:{"headline-lg":["Inter"],"data-mono":["JetBrains Mono"],"telemetry-metric":["JetBrains Mono"],"body-lg":["Inter"],"headline-sm":["Inter"],"body-md":["Inter"],"label-lg":["JetBrains Mono"],"headline-md":["Inter"],"body-sm":["Inter"],"label-md":["JetBrains Mono"],"label-sm":["JetBrains Mono"]},fontSize:{"headline-lg":["1.5rem",{"lineHeight":"2rem","letterSpacing":"-0.02em","fontWeight":"600"}],"data-mono":["0.75rem",{"lineHeight":"1rem","letterSpacing":"-0.02em","fontWeight":"400"}],"telemetry-metric":["1.25rem",{"lineHeight":"1.5rem","letterSpacing":"-0.03em","fontWeight":"600"}],"body-lg":["0.875rem",{"lineHeight":"1.375rem","fontWeight":"400"}],"headline-sm":["0.875rem",{"lineHeight":"1.25rem","letterSpacing":"-0.01em","fontWeight":"600"}],"body-md":["0.8125rem",{"lineHeight":"1.25rem","fontWeight":"400"}],"label-lg":["0.8125rem",{"lineHeight":"1.125rem","letterSpacing":"-0.01em","fontWeight":"500"}],"headline-md":["1.125rem",{"lineHeight":"1.5rem","letterSpacing":"-0.015em","fontWeight":"600"}],"body-sm":["0.75rem",{"lineHeight":"1.125rem","fontWeight":"400"}],"label-md":["0.75rem",{"lineHeight":"1rem","letterSpacing":"0em","fontWeight":"500"}],"label-sm":["0.6875rem",{"lineHeight":"0.875rem","letterSpacing":"0.02em","fontWeight":"500"}]}}}}</script></head><body class="bg-surface font-body-md text-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-64 bg-surface-container-lowest z-50 flex flex-col justify-between select-none shadow-[0_1px_8px_rgba(0,0,0,0.4)]"><div class="flex flex-col"><div class="h-14 px-space-lg flex items-center gap-space-sm bg-surface-container-lowest"><div class="w-7 h-7 rounded bg-surface-container-high flex items-center justify-center text-primary"><span class="material-symbols-outlined text-[18px]">videocam</span></div><div class="flex flex-col"><div class="flex items-center gap-space-xs"><span class="font-headline-sm text-headline-sm font-semibold tracking-wider text-primary">MIIA</span><span class="font-label-sm text-label-sm px-1 rounded bg-surface-container-high text-outline text-[10px] uppercase font-bold tracking-widest">CORE</span></div><span class="font-label-sm text-label-sm text-outline-variant tracking-wider uppercase text-[9px]">GLASSES AI HUD</span></div></div><div class="px-space-md py-space-xs"><div class="font-label-sm text-label-sm text-outline uppercase px-space-sm py-space-xs tracking-wider text-[10px]">Módulos de Sistema</div></div><nav class="flex flex-col gap-space-xxs px-space-md" data-active-classes="bg-surface-container-high text-primary font-medium"><a class="flex items-center justify-between px-space-sm py-space-sm rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="vision" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">visibility</span><span class="font-body-md text-body-md">Visión</span></div><span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span></a><a class="flex items-center justify-between px-space-sm py-space-sm rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="objetos-detectados" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">view_in_ar</span><span class="font-body-md text-body-md">Objetos detectados</span></div><span class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant">14</span></a><a class="flex items-center justify-between px-space-sm py-space-sm rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="ensenar-objeto" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">model_training</span><span class="font-body-md text-body-md">Enseñar objeto</span></div><span class="font-label-sm text-label-sm px-1 rounded bg-secondary-container/20 text-secondary-fixed text-[9px] font-bold">FEW-SHOT</span></a><a class="flex items-center justify-between px-space-sm py-space-sm rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="historial" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">timeline</span><span class="font-body-md text-body-md">Historial</span></div><span class="font-label-sm text-label-sm text-outline font-data-mono">LOGS</span></a><a class="flex items-center justify-between px-space-sm py-space-sm rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="configuracion" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">tune</span><span class="font-body-md text-body-md">Configuración</span></div></a></nav></div><div class="p-space-md m-space-md rounded bg-surface-container-low flex flex-col gap-space-sm shadow-[0_1px_8px_rgba(0,0,0,0.2)]"><div class="flex items-center justify-between"><span class="font-label-sm text-label-sm uppercase text-outline text-[10px]">Hardware Link</span><span class="font-label-sm text-label-sm text-outline-variant font-data-mono">v1.4.2-rc3</span></div><div class="flex items-center gap-space-sm"><span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-tertiary"></span></span><span class="font-label-md text-label-md text-on-surface font-semibold">Gafas conectadas</span></div><div class="flex flex-col gap-space-xxs pt-space-xs"><div class="flex items-center justify-between font-data-mono text-data-mono text-on-surface-variant"><span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>WS Live</span><span class="text-tertiary">12ms</span></div><span class="font-data-mono text-data-mono text-outline-variant truncate text-[10px]">ws://192.168.1.104:8765</span></div></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-14 bg-surface-container-lowest/90 backdrop-blur-md z-40 px-space-lg flex items-center justify-between shadow-[0_1px_8px_rgba(0,0,0,0.3)]"><div class="flex items-center gap-space-md"><span class="font-headline-sm text-headline-sm font-semibold text-on-surface tracking-tight">MIIA Glasses</span><span class="text-outline-variant">·</span><span class="font-body-sm text-body-sm text-on-surface-variant">Visión aumentada en tiempo real</span></div><div class="flex items-center gap-space-md"><div class="hidden xl:flex items-center gap-space-xs"><div class="flex items-center gap-space-xs px-space-sm py-space-xxs rounded bg-surface-container font-data-mono text-data-mono"><span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span><span class="text-outline">WS:</span><span class="text-tertiary">Conectado</span></div><div class="flex items-center gap-space-xs px-space-sm py-space-xxs rounded bg-surface-container font-data-mono text-data-mono"><span class="text-outline">FPS:</span><span class="text-on-surface font-semibold">24.8 / 25</span></div><div class="flex items-center gap-space-xs px-space-sm py-space-xxs rounded bg-surface-container font-data-mono text-data-mono"><span class="text-outline">LAT:</span><span class="text-secondary">132 ms</span></div><div class="flex items-center gap-space-xs px-space-sm py-space-xxs rounded bg-surface-container font-data-mono text-data-mono"><span class="text-outline">ENG:</span><span class="text-primary-fixed">YOLOS-tiny + DINOv2</span></div></div><div class="flex items-center gap-space-xs"><button class="h-7 w-7 rounded bg-surface-container flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" title="Micrófono de gafas" type="button"><span class="material-symbols-outlined text-[16px]">mic</span></button><button class="h-7 w-7 rounded bg-surface-container flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" title="Sensor de cámara" type="button"><span class="material-symbols-outlined text-[16px]">videocam</span></button><button class="h-7 px-space-sm rounded bg-error-container/20 text-error hover:bg-error-container hover:text-on-error font-label-sm text-label-sm flex items-center gap-1 transition-colors" type="button"><span class="material-symbols-outlined text-[14px]">power_settings_new</span><span>Desconectar</span></button></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="w-full pt-14 bg-surface min-h-screen"><div class="flex flex-col w-full">
+<div class="p-space-lg flex flex-col gap-space-md">
+<!-- Module Header -->
+<div class="flex flex-col lg:flex-row lg:items-start justify-between gap-space-md pb-space-xs">
+<div class="flex flex-col gap-space-xxs">
+<div class="flex items-center gap-space-xs">
+<span class="font-label-sm text-label-sm text-secondary tracking-widest uppercase">MODULE // FS-EXTRACTION</span>
+<span class="text-outline-variant text-body-sm">/</span>
+<span class="font-label-sm text-label-sm text-outline font-data-mono">DINOv2-ViT-S/14</span>
+</div>
+<h1 class="font-headline-lg text-headline-lg font-semibold text-on-surface tracking-tight">
+          Enseñar un objeto a MIIA
+        </h1>
+<p class="font-body-md text-body-md text-on-surface-variant max-w-3xl">
+          Calibración y extracción de representaciones vectoriales para reconocimiento continuo sin almacenar imágenes crudas.
+        </p>
+</div>
+<!-- Quick Status Badges -->
+<div class="flex items-center gap-space-xs self-start shrink-0">
+<div class="flex items-center gap-space-xs px-space-sm py-1 bg-surface-container-high rounded font-data-mono text-label-sm">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<span class="text-outline-variant uppercase text-[10px]">TENSOR PIPELINE</span>
+<span class="text-tertiary font-medium">READY</span>
+</div>
+<div class="flex items-center gap-space-xs px-space-sm py-1 bg-surface-container-high rounded font-data-mono text-label-sm">
+<span class="text-outline-variant uppercase text-[10px]">INDEX:</span>
+<span class="text-secondary font-medium">HNSW-L2</span>
+</div>
+</div>
+</div>
+<!-- Privacy Banner -->
+<div class="bg-surface-container-low rounded p-space-md flex items-start gap-space-md shadow-sm">
+<div class="w-8 h-8 rounded bg-secondary-container/20 flex items-center justify-center shrink-0 text-secondary">
+<span class="material-symbols-outlined text-[20px]">shield_lock</span>
+</div>
+<div class="flex flex-col gap-space-xxs min-w-0">
+<div class="flex items-center gap-space-xs">
+<span class="font-label-md text-label-md text-on-surface font-semibold uppercase tracking-wider text-[11px]">
+            Zero-Raw Protocol · Privacidad Biométrica y Visual
+          </span>
+<span class="font-label-sm text-label-sm px-1.5 py-0.2 bg-surface-container-high rounded text-primary text-[10px]">
+            768-D EMBEDDINGS
+          </span>
+</div>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">
+          MIIA guarda representaciones numéricas del objeto (embeddings vectoriales de 768-D con DINOv2) para reconocerlo posteriormente. Las imágenes originales no se almacenan en disco ni en base de datos.
+        </p>
+</div>
+</div>
+<!-- Main Workspace Grid -->
+<div class="grid grid-cols-1 lg:grid-cols-12 gap-space-md">
+<!-- Left / Center Viewport & Configuration: 8 Columns -->
+<div class="lg:col-span-8 flex flex-col gap-space-md">
+<!-- Object Metadata Config Card -->
+<div class="bg-surface-container-low rounded p-space-md flex flex-col gap-space-md shadow-sm">
+<div class="flex items-center justify-between pb-space-xs">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">01 // Configuración del Vector Descriptor</span>
+<span class="font-data-mono text-data-mono text-outline-variant">ID: OBJ-0782-FFS</span>
+</div>
+<div class="grid grid-cols-1 md:grid-cols-3 gap-space-md">
+<!-- Object Name Input -->
+<div class="flex flex-col gap-space-xs">
+<label class="font-label-md text-label-md text-on-surface" for="object-name">Nombre del objeto</label>
+<div class="relative">
+<input class="w-full h-8 px-space-sm bg-surface-container-lowest text-on-surface font-body-md rounded focus:outline-none focus:bg-surface-container text-body-md" id="object-name" type="text" value="Mi celular"/>
+<span class="absolute right-2 top-2 font-data-mono text-[10px] text-outline">STR</span>
+</div>
+<!-- Suggestions tags -->
+<div class="flex flex-wrap gap-1 pt-1">
+<button class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant hover:text-secondary hover:bg-surface-container-highest transition-colors" onclick="setObjName('Llaves de casa')" type="button">
+                  Llaves de casa
+                </button>
+<button class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant hover:text-secondary hover:bg-surface-container-highest transition-colors" onclick="setObjName('Taza térmica')" type="button">
+                  Taza térmica
+                </button>
+<button class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant hover:text-secondary hover:bg-surface-container-highest transition-colors" onclick="setObjName('Gafas de lectura')" type="button">
+                  Gafas de lectura
+                </button>
+</div>
+</div>
+<!-- Category -->
+<div class="flex flex-col gap-space-xs">
+<label class="font-label-md text-label-md text-on-surface" for="object-cat">Categoría</label>
+<div class="relative">
+<select class="w-full h-8 px-space-sm bg-surface-container-lowest text-on-surface font-body-md rounded focus:outline-none focus:bg-surface-container appearance-none pr-8" id="object-cat">
+<option selected="">Dispositivo personal</option>
+<option>Herramienta manual</option>
+<option>Contenedor / Utensilio</option>
+<option>Hardware óptico / Sensor</option>
+<option>Llave / Acceso físico</option>
+</select>
+<span class="material-symbols-outlined text-[18px] text-outline pointer-events-none absolute right-2 top-1.5">expand_more</span>
+</div>
+<span class="font-data-mono text-data-mono text-outline-variant">Taxonomía: PERS_DEVICE_01</span>
+</div>
+<!-- Confidence Slider -->
+<div class="flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<label class="font-label-md text-label-md text-on-surface" for="conf-slider">Umbral de confianza</label>
+<span class="font-data-mono text-data-mono text-secondary font-semibold" id="conf-val">0.90 (90%)</span>
+</div>
+<div class="flex items-center h-8">
+<input class="w-full accent-primary-container bg-surface-container-lowest h-1.5 rounded cursor-pointer" id="conf-slider" max="0.99" min="0.50" oninput="document.getElementById('conf-val').innerText = this.value + ' (' + Math.round(this.value*100) + '%)'" step="0.01" type="range" value="0.90"/>
+</div>
+<span class="font-data-mono text-data-mono text-outline-variant">Min cos_sim &gt;= 0.900</span>
+</div>
+</div>
+</div>
+<!-- Vision HUD Camera Stream Viewport -->
+<div class="bg-surface-container-low rounded overflow-hidden flex flex-col shadow-md">
+<!-- Viewport Header Strip -->
+<div class="bg-surface-container-lowest px-space-md py-space-xs flex items-center justify-between font-data-mono text-data-mono">
+<div class="flex items-center gap-space-md">
+<div class="flex items-center gap-1.5">
+<span class="w-2 h-2 rounded-full bg-error animate-pulse"></span>
+<span class="text-on-surface font-semibold tracking-wider">OPTIC_LENS_FRONT</span>
+</div>
+<span class="text-outline-variant">|</span>
+<span class="text-on-surface-variant">RGB 1080p @ 60 FPS</span>
+<span class="text-outline-variant">|</span>
+<span class="text-secondary">EXPOSURE: LOCKED 1/240</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="text-outline uppercase text-[10px]">TENSOR BUFFER:</span>
+<span class="text-tertiary">SYNC</span>
+</div>
+</div>
+<!-- Optical Viewport Canvas with HUD Overlay -->
+<div class="relative w-full aspect-video bg-surface-container-lowest flex items-center justify-center overflow-hidden select-none">
+<!-- Simulated Camera Feed Background -->
+<img class="w-full h-full object-cover opacity-70" data-alt="First-person POV engineering view through smart glasses looking at a sleek modern smartphone placed over a dark laboratory workbench with electronic test tools, subtle technical cyan grid lighting, precision depth of field." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBva25-hI0-BaktyqCpdQvFLf1KDYySrWEGVVXdpzxd-1aacDivr4WvpxZmOm2c0tWw9h_zrAJvHxJ4G8NODCX00Qh5q3MknPJL2hpCxSh3iQ-zjHGGVaYlCiLgR-qhv9WmgjpYnkuEI0YYnZzR42PGxVWoZihO-m4tGdqXQ2cU17bR6celPNbpgQOAyqSNv9gQZxKTN6uL0zl37ZbaTGzsm4kJNgVYTTmg52uKufpNKiRDdkqXMHB9"/>
+<!-- Subtle Grid Background Simulation -->
+<div class="absolute inset-0 bg-[radial-gradient(#00e3fd_0.6px,transparent_0.6px)] [background-size:24px_24px] opacity-15 pointer-events-none"></div>
+<!-- Optical Center Crosshair -->
+<div class="absolute w-8 h-[1px] bg-outline-variant/60 pointer-events-none"></div>
+<div class="absolute h-8 w-[1px] bg-outline-variant/60 pointer-events-none"></div>
+<div class="absolute w-2 h-2 rounded-full bg-secondary/30 pointer-events-none"></div>
+<!-- Target Recognition Bounding Box & HUD Scanning Reticle -->
+<div class="absolute w-64 h-80 sm:w-72 sm:h-96 pointer-events-none flex flex-col justify-between p-2">
+<!-- Reticle Top Bar -->
+<div class="flex items-center justify-between">
+<div class="bg-secondary-container text-surface-container-lowest px-1.5 py-0.5 font-data-mono text-[10px] font-bold tracking-wider rounded-sm flex items-center gap-1">
+<span class="w-1.5 h-1.5 rounded-full bg-surface-container-lowest"></span>
+<span>DINOv2 ROI · TARGET_LOCKED</span>
+</div>
+<div class="font-data-mono text-secondary text-[10px] bg-surface-container-lowest/80 px-1 rounded">
+                  768-D EMBED
+                </div>
+</div>
+<!-- Reticle Corner Tags (Precision Reticle) -->
+<div class="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-secondary pointer-events-none"></div>
+<div class="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-secondary pointer-events-none"></div>
+<div class="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-secondary pointer-events-none"></div>
+<div class="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-secondary pointer-events-none"></div>
+<!-- Center Holographic Scan Ring -->
+<div class="m-auto flex flex-col items-center justify-center gap-1">
+<div class="w-24 h-24 rounded-full border border-secondary/40 border-dashed animate-spin flex items-center justify-center" style="animation-duration: 12s;">
+<div class="w-16 h-16 rounded-full border border-primary/50 flex items-center justify-center">
+<span class="material-symbols-outlined text-secondary text-[24px]">filter_center_focus</span>
+</div>
+</div>
+<span class="font-data-mono text-[9px] uppercase tracking-widest text-secondary bg-surface-container-lowest/80 px-2 py-0.5 rounded">
+                  EXTRACTION READY
+                </span>
+</div>
+<!-- Reticle Bottom Details -->
+<div class="flex items-center justify-between text-on-surface-variant font-data-mono text-[10px] bg-surface-container-lowest/70 backdrop-blur-sm p-1 rounded">
+<div class="flex items-center gap-1">
+<span class="text-tertiary">Q_SCORE: 98.4%</span>
+</div>
+<div class="text-outline">
+                  STABLE (0.04 ms/drift)
+                </div>
+</div>
+</div>
+<!-- Viewport HUD Bottom Strip -->
+<div class="absolute bottom-2 left-2 right-2 px-space-md py-1.5 rounded bg-surface-container-lowest/90 backdrop-blur-md flex items-center justify-between font-data-mono text-data-mono text-on-surface">
+<div class="flex items-center gap-space-md text-[11px]">
+<div class="flex items-center gap-1">
+<span class="text-outline">FPS:</span>
+<span class="text-on-surface font-semibold">59.8</span>
+</div>
+<div class="flex items-center gap-1">
+<span class="text-outline">LAT_INFERENCE:</span>
+<span class="text-secondary font-semibold">14.2 ms</span>
+</div>
+<div class="hidden sm:flex items-center gap-1">
+<span class="text-outline">TEMP:</span>
+<span class="text-tertiary">38.6°C</span>
+</div>
+</div>
+<div class="flex items-center gap-1 text-[11px]">
+<span class="text-outline">MODO:</span>
+<span class="text-primary font-semibold">FEW-SHOT HARVEST</span>
+</div>
+</div>
+</div>
+<!-- Prominent Progress Tracking Banner -->
+<div class="p-space-md bg-surface-container flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<div class="w-6 h-6 rounded bg-primary-container flex items-center justify-center text-on-primary">
+<span class="material-symbols-outlined text-[16px]">collections_bookmark</span>
+</div>
+<span class="font-headline-sm text-headline-sm text-on-surface">
+                  Capturando ejemplos: <span class="text-secondary font-data-mono font-semibold">7 / 12</span>
+</span>
+</div>
+<span class="font-data-mono text-data-mono text-tertiary">58% completado (Mínimo recomendado: 8)</span>
+</div>
+<!-- Segmented Progress Bar 7 / 12 -->
+<div class="grid grid-cols-12 gap-1.5 w-full">
+<!-- Active 1 -->
+<div class="h-2 rounded-xs bg-tertiary" title="Slot 1: Capturado"></div>
+<!-- Active 2 -->
+<div class="h-2 rounded-xs bg-tertiary" title="Slot 2: Capturado"></div>
+<!-- Active 3 -->
+<div class="h-2 rounded-xs bg-tertiary" title="Slot 3: Capturado"></div>
+<!-- Active 4 -->
+<div class="h-2 rounded-xs bg-tertiary" title="Slot 4: Capturado"></div>
+<!-- Active 5 -->
+<div class="h-2 rounded-xs bg-tertiary" title="Slot 5: Capturado"></div>
+<!-- Active 6 -->
+<div class="h-2 rounded-xs bg-tertiary" title="Slot 6: Capturado"></div>
+<!-- Active 7 -->
+<div class="h-2 rounded-xs bg-tertiary animate-pulse" title="Slot 7: Capturado"></div>
+<!-- Pending 8 -->
+<div class="h-2 rounded-xs bg-surface-container-highest" title="Slot 8: Pendiente"></div>
+<!-- Pending 9 -->
+<div class="h-2 rounded-xs bg-surface-container-highest" title="Slot 9: Pendiente"></div>
+<!-- Pending 10 -->
+<div class="h-2 rounded-xs bg-surface-container-highest" title="Slot 10: Pendiente"></div>
+<!-- Pending 11 -->
+<div class="h-2 rounded-xs bg-surface-container-highest" title="Slot 11: Pendiente"></div>
+<!-- Pending 12 -->
+<div class="h-2 rounded-xs bg-surface-container-highest" title="Slot 12: Pendiente"></div>
+</div>
+</div>
+<!-- Mini Gallery of Captured Vector Samples -->
+<div class="p-space-md bg-surface-container-low flex flex-col gap-space-xs">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">Tensores de Muestras Registradas (7)</span>
+<span class="font-data-mono text-data-mono text-outline-variant">Matriz ViT-S/14</span>
+</div>
+<!-- Horizontal Scroll Gallery -->
+<div class="grid grid-cols-2 sm:grid-cols-4 md:grid-cols-7 gap-space-xs pt-space-xs">
+<!-- Sample 1 -->
+<div class="bg-surface-container rounded p-1.5 flex flex-col gap-1 group hover:bg-surface-container-high transition-colors">
+<div class="relative w-full aspect-square rounded bg-surface-container-lowest overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Macro cropped close-up silhouette of a smartphone face-up at 0 degree angle with numeric vector points overlay in cyan." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAICEmPvjEaz4UqmKVWqwpIB92h6FXuQ6egu_ZlKKipUG3f1PWnXBJBRJex6qrPFOAtMn3DtrhD_fY6VQmQkUQazdixUd_a0KHmOJBWZFTrRGh1EMfSl-b0EKG7t4NshPdtIplBjM0qQsxy7V_UB1h3O9UaUFGb61XtTRhmN5P1aTYMWoyQWfJzjBCP3zDyd3MGqd-0W5dCpaEEaBIHqPeHuRiRc1_u-VGXat47Onjiyh1Kj70PdSQV"/>
+<span class="absolute top-1 left-1 font-data-mono text-[9px] bg-surface-container-lowest/80 text-secondary px-1 rounded">#01</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface truncate">Frontal 0°</span>
+<div class="flex items-center justify-between font-data-mono text-[10px]">
+<span class="text-tertiary">98% Q</span>
+<span class="text-outline">OK</span>
+</div>
+</div>
+</div>
+<!-- Sample 2 -->
+<div class="bg-surface-container rounded p-1.5 flex flex-col gap-1 group hover:bg-surface-container-high transition-colors">
+<div class="relative w-full aspect-square rounded bg-surface-container-lowest overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Cropped angle shot of a metallic smartphone tilted 15 degrees to the right, showing precision glass edge reflection." src="https://lh3.googleusercontent.com/aida-public/AB6AXuD2uG9MYCYJc4dVRc8NCYl-rYvkUvJuHcmo5-NMiO_pWc8QRg8IeZlY4iIJBLxMTeqCMKWoJA68we8ilWpUGspqcFn4Vr4LWGb8Qz41oOV2ME5mE_Yuijf-aobu3h3AWcL2edFUagDVkMvcZ6C3mDSbf3cnPfgM7squOxlXMwZW6bsoxNQBaHYeK717qJMuv3x3-oEVAtLEyjxt5vcIV_MQI-6XMjiwTRN4c6AwbbXBw0vHpZFUoe4H"/>
+<span class="absolute top-1 left-1 font-data-mono text-[9px] bg-surface-container-lowest/80 text-secondary px-1 rounded">#02</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface truncate">Inclin. +15°</span>
+<div class="flex items-center justify-between font-data-mono text-[10px]">
+<span class="text-tertiary">95% Q</span>
+<span class="text-outline">OK</span>
+</div>
+</div>
+</div>
+<!-- Sample 3 -->
+<div class="bg-surface-container rounded p-1.5 flex flex-col gap-1 group hover:bg-surface-container-high transition-colors">
+<div class="relative w-full aspect-square rounded bg-surface-container-lowest overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Cropped angle shot of a metallic smartphone tilted 15 degrees to the left with specular highlight on lens." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAuQwyyyyDrBTbFQFxGC-EyQkhaWfh4iwH6JU_Nin8vItk6QzITHRSMDE3cd42guj3uXaKBP5AwqgVjOBGWhQ5HxheDv1QDx7R2WxF_g6FO04lt0LVV3Ogbq10Ffk9Hnok0pG7--yj_gY38trvK9bU-utHE0MU72Sm5fnKHEaZmVOQNxrgfI_Zs5t7oCqBK6dny16FRyLrlhBsHhBci_wsnX4YlCZTJqny-zaAbekZhq3Ob4Wuwaika"/>
+<span class="absolute top-1 left-1 font-data-mono text-[9px] bg-surface-container-lowest/80 text-secondary px-1 rounded">#03</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface truncate">Inclin. -15°</span>
+<div class="flex items-center justify-between font-data-mono text-[10px]">
+<span class="text-tertiary">99% Q</span>
+<span class="text-outline">OK</span>
+</div>
+</div>
+</div>
+<!-- Sample 4 -->
+<div class="bg-surface-container rounded p-1.5 flex flex-col gap-1 group hover:bg-surface-container-high transition-colors">
+<div class="relative w-full aspect-square rounded bg-surface-container-lowest overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Top down overhead zenith 45 degree angle photo of a smartphone with crisp dark edges." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAtUXm294aapzA9csalLeasJvlexoDrbflubVD0xoDZzXc6Tjr4f3OZ4EM-Ckp3BE9CtactgtbJsNgMD5Y716PgL0jrFOUEUeUMuE0VJMWrcYbG8Ii7-zZJ8REkkFFNc8l8LipJjrhSktbJwnFFQgP8tbjKT_myJCgD7K7x017Acbp6gclc1OPWb0cEj-fP0DmeSPxZeLlciNB-qyRsZHPMpPYLG4KEeMcXtvt1d-oxA-9sfkVL9QQA"/>
+<span class="absolute top-1 left-1 font-data-mono text-[9px] bg-surface-container-lowest/80 text-secondary px-1 rounded">#04</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface truncate">Cenital 45°</span>
+<div class="flex items-center justify-between font-data-mono text-[10px]">
+<span class="text-tertiary">97% Q</span>
+<span class="text-outline">OK</span>
+</div>
+</div>
+</div>
+<!-- Sample 5 -->
+<div class="bg-surface-container rounded p-1.5 flex flex-col gap-1 group hover:bg-surface-container-high transition-colors">
+<div class="relative w-full aspect-square rounded bg-surface-container-lowest overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Lateral low angle perspective of a dark smartphone chassis on dark matte desk." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCcQbizwm766O0tE7L-1mPJpYTxdYkCQweg4-TuWFduFS2SMKjX2STHb6VmYeL4iV-Jp83AlFjv9aVsSsezCDcKWSzHOTO2hM_Nj6RDa73uTtW7J6d9S8GR6Dp79YzeF35SSI9UVLP5JWYGFnb0x655GbgKDma7EqrtA66tQWF3SjUWzw3QXmD7q8yXBTW7q99RNaa8micilDu7SjosRlMWRqrRf2YUj6O62RnWixKEBQ92K7ZpsR56"/>
+<span class="absolute top-1 left-1 font-data-mono text-[9px] bg-surface-container-lowest/80 text-secondary px-1 rounded">#05</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface truncate">Lateral 30°</span>
+<div class="flex items-center justify-between font-data-mono text-[10px]">
+<span class="text-tertiary">96% Q</span>
+<span class="text-outline">OK</span>
+</div>
+</div>
+</div>
+<!-- Sample 6 -->
+<div class="bg-surface-container rounded p-1.5 flex flex-col gap-1 group hover:bg-surface-container-high transition-colors">
+<div class="relative w-full aspect-square rounded bg-surface-container-lowest overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Inverted reverse angle showing camera bump and matte texture of mobile phone back panel." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAfwH5aofPf4Icwh5int-PzjNKYrrz59KlTv_Gj8m07RoGnen0nMujquscIiBBCP8W35BXhZKFIJqI2KATKHZ-vsqqpi9dsnPM5C2vRvOLPyI6P2r00c2i6cKQDVzfp4VuCRjYXhlgCDnSpOQtPfoiCN34Qg-ey5PRMC3MJ2Vp-rRaw-DOr5mhpGfz6-MNZUb00MiXWmC7BFth5C-bLYiUTMhytKkdKIvjV0-wdU91_FgmTnBAnk36Y"/>
+<span class="absolute top-1 left-1 font-data-mono text-[9px] bg-surface-container-lowest/80 text-secondary px-1 rounded">#06</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-on-surface truncate">Posterior 10°</span>
+<div class="flex items-center justify-between font-data-mono text-[10px]">
+<span class="text-tertiary">98% Q</span>
+<span class="text-outline">OK</span>
+</div>
+</div>
+</div>
+<!-- Sample 7 (Latest) -->
+<div class="bg-surface-container rounded p-1.5 flex flex-col gap-1 bg-surface-container-high transition-colors">
+<div class="relative w-full aspect-square rounded bg-surface-container-lowest overflow-hidden">
+<img class="w-full h-full object-cover" data-alt="Diagonal corner perspective view of a phone held in natural operating angle." src="https://lh3.googleusercontent.com/aida-public/AB6AXuBFR8Kw-j2rn1q0gIikfqJ1KRchkjbZG7bauLBSlYE4GuO6_AYiQrh6uUqr2qwC3uuLFRvhAuoBc-iFk17fzfNZB1PFwngDW1dVWYyDNfgnsZxoqKCPkUjXfgn3Bu90c2oK8xlCHXn1hI1YLra228tkWyc71GrynYZEGo_fSWD-SJKaWut3RXvdMHHdnsPW3zb--aPQRiO22oPTBSqeLAe3a0DpgqK9F0u7JcjLc6Ba7qKd4ebtaV0w"/>
+<span class="absolute top-1 left-1 font-data-mono text-[9px] bg-secondary text-surface-container-lowest px-1 rounded font-bold">#07</span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-secondary font-medium truncate">Diagonal +35°</span>
+<div class="flex items-center justify-between font-data-mono text-[10px]">
+<span class="text-tertiary">99% Q</span>
+<span class="text-secondary">NEW</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+<!-- Bottom Execution Action Bar -->
+<div class="p-space-md bg-surface-container-high flex flex-wrap items-center justify-between gap-space-sm">
+<div class="flex items-center gap-space-xs">
+<button class="h-9 px-space-md rounded bg-surface-container text-on-surface hover:bg-surface-bright active:bg-surface-container-lowest font-label-md text-label-md flex items-center gap-2 transition-colors cursor-pointer" id="btn-capture" onclick="captureSample()" type="button">
+<span class="material-symbols-outlined text-[18px] text-secondary">photo_camera</span>
+<span>Capturar ejemplo</span>
+<kbd class="px-1.5 py-0.5 rounded bg-surface-container-lowest font-data-mono text-[10px] text-outline">ESPACIO</kbd>
+</button>
+<button class="h-9 px-space-sm rounded text-error hover:bg-error-container/20 font-label-md text-label-md flex items-center gap-1.5 transition-colors cursor-pointer" onclick="clearSamples()" type="button">
+<span class="material-symbols-outlined text-[16px]">restart_alt</span>
+<span>Limpiar muestras</span>
+</button>
+</div>
+<button class="h-9 px-space-lg rounded bg-primary-container text-on-primary-container hover:bg-primary font-label-md text-label-md font-semibold flex items-center gap-2 shadow-sm transition-all cursor-pointer" id="btn-compile" onclick="compileObject()" type="button">
+<span class="material-symbols-outlined text-[18px]">model_training</span>
+<span>Aprender objeto</span>
+<span class="material-symbols-outlined text-[16px]">arrow_forward</span>
+</button>
+</div>
+</div>
+</div>
+<!-- Right Column: Vector Telemetry & Step Guides: 4 Columns -->
+<div class="lg:col-span-4 flex flex-col gap-space-md">
+<!-- Vector Embedding Telemetry Panel -->
+<div class="bg-surface-container-low rounded p-space-md flex flex-col gap-space-md shadow-sm">
+<div class="flex items-center justify-between pb-space-xs">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-secondary text-[18px]">hub</span>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">Vector Embedding Telemetry</span>
+</div>
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+</div>
+<!-- Backbone Specs Grid -->
+<div class="flex flex-col gap-space-xs font-data-mono text-data-mono">
+<div class="flex items-center justify-between p-space-xs rounded bg-surface-container">
+<span class="text-outline">Backbone:</span>
+<span class="text-on-surface font-semibold">Meta DINOv2 ViT-S/14</span>
+</div>
+<div class="flex items-center justify-between p-space-xs rounded bg-surface-container">
+<span class="text-outline">Vector Size:</span>
+<span class="text-secondary font-semibold">384 dimensions</span>
+</div>
+<div class="flex items-center justify-between p-space-xs rounded bg-surface-container">
+<span class="text-outline">Clúster en memoria:</span>
+<span class="text-on-surface">7 tensores activos</span>
+</div>
+<div class="flex flex-col gap-1 p-space-xs rounded bg-surface-container">
+<div class="flex items-center justify-between">
+<span class="text-outline">Coherencia intra-clase:</span>
+<span class="text-tertiary font-semibold">0.962</span>
+</div>
+<!-- Small visual cohesion sparkbar -->
+<div class="w-full bg-surface-container-lowest h-1 rounded overflow-hidden">
+<div class="bg-tertiary h-full w-[96.2%]"></div>
+</div>
+<span class="text-[10px] text-tertiary-fixed-dim">Excelente separación hiper-esférica</span>
+</div>
+</div>
+<!-- Mini Vector Scatter SVG Map -->
+<div class="flex flex-col gap-space-xs">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline text-[10px]">Latent Space Dispersion (PCA 2D)</span>
+<div class="w-full h-32 rounded bg-surface-container-lowest p-2 relative flex items-center justify-center overflow-hidden">
+<!-- Inline High-density SVG Scatter -->
+<svg class="w-full h-full text-secondary" viewbox="0 0 200 100">
+<!-- Axes -->
+<line stroke="currentColor" stroke-opacity="0.15" stroke-width="1" x1="10" x2="190" y1="90" y2="90"></line>
+<line stroke="currentColor" stroke-opacity="0.15" stroke-width="1" x1="10" x2="10" y1="10" y2="90"></line>
+<line stroke="currentColor" stroke-dasharray="2,2" stroke-opacity="0.1" stroke-width="1" x1="100" x2="100" y1="10" y2="90"></line>
+<line stroke="currentColor" stroke-dasharray="2,2" stroke-opacity="0.1" stroke-width="1" x1="10" x2="190" y1="50" y2="50"></line>
+<!-- Known object clusters (Dim gray) -->
+<circle class="text-outline-variant" cx="45" cy="30" fill="currentColor" opacity="0.4" r="2.5"></circle>
+<circle class="text-outline-variant" cx="50" cy="28" fill="currentColor" opacity="0.4" r="2.5"></circle>
+<circle class="text-outline-variant" cx="42" cy="35" fill="currentColor" opacity="0.4" r="2.5"></circle>
+<circle class="text-outline-variant" cx="150" cy="70" fill="currentColor" opacity="0.4" r="2.5"></circle>
+<circle class="text-outline-variant" cx="158" cy="75" fill="currentColor" opacity="0.4" r="2.5"></circle>
+<circle class="text-outline-variant" cx="145" cy="72" fill="currentColor" opacity="0.4" r="2.5"></circle>
+<!-- Current Training Object Cluster (Vibrant Cyan) -->
+<ellipse cx="110" cy="42" fill="currentColor" fill-opacity="0.1" rx="18" ry="12" stroke="currentColor" stroke-opacity="0.4" stroke-width="1"></ellipse>
+<circle cx="106" cy="40" fill="#00e3fd" r="3"></circle>
+<circle cx="112" cy="38" fill="#00e3fd" r="3"></circle>
+<circle cx="116" cy="44" fill="#00e3fd" r="3"></circle>
+<circle cx="104" cy="45" fill="#00e3fd" r="3"></circle>
+<circle cx="109" cy="47" fill="#00e3fd" r="3"></circle>
+<circle cx="114" cy="41" fill="#00e3fd" r="3"></circle>
+<circle cx="118" cy="43" fill="#2fe378" r="3.5"></circle> <!-- Latest sample -->
+</svg>
+<div class="absolute bottom-1 right-2 font-data-mono text-[9px] text-tertiary">
+                CLUSTER: DENSE
+              </div>
+</div>
+</div>
+</div>
+<!-- Target Database Store Card -->
+<div class="bg-surface-container-low rounded p-space-md flex flex-col gap-space-xs shadow-sm">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">Base de Datos de Destino</span>
+<span class="flex items-center gap-1 font-data-mono text-[10px] text-tertiary">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>ONLINE
+            </span>
+</div>
+<div class="flex items-center gap-space-sm p-space-sm rounded bg-surface-container-high mt-1">
+<div class="w-8 h-8 rounded bg-surface-container flex items-center justify-center text-primary">
+<span class="material-symbols-outlined text-[18px]">dns</span>
+</div>
+<div class="flex flex-col min-w-0">
+<span class="font-label-md text-label-md text-on-surface font-semibold truncate">MySQL Vector Store</span>
+<span class="font-data-mono text-data-mono text-secondary truncate">Colección: 'user_custom_objects'</span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-space-xs font-data-mono text-[11px] text-outline">
+<span>Índice tipo: IVF_FLAT</span>
+<span>Espacio métrico: COSINE</span>
+</div>
+</div>
+<!-- Step-by-Step Training Instructions Card -->
+<div class="bg-surface-container-low rounded p-space-md flex flex-col gap-space-md shadow-sm">
+<div class="flex items-center gap-space-xs">
+<span class="material-symbols-outlined text-outline text-[18px]">help_center</span>
+<span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">Protocolo de Registro Óptimo</span>
+</div>
+<div class="flex flex-col gap-space-sm">
+<div class="flex items-start gap-space-sm">
+<div class="w-5 h-5 rounded-full bg-surface-container-high flex items-center justify-center shrink-0 font-data-mono text-[11px] text-secondary font-bold">
+                1
+              </div>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-tight">
+<span class="text-on-surface font-medium">Coloca el objeto</span> en el centro del retículo visual hasta que el indicador ROI pase a color cian.
+              </p>
+</div>
+<div class="flex items-start gap-space-sm">
+<div class="w-5 h-5 rounded-full bg-surface-container-high flex items-center justify-center shrink-0 font-data-mono text-[11px] text-secondary font-bold">
+                2
+              </div>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-tight">
+<span class="text-on-surface font-medium">Gira suavemente</span> el objeto para capturar al menos 8 ángulos distintos (inclinación, rotación, perspectiva).
+              </p>
+</div>
+<div class="flex items-start gap-space-sm">
+<div class="w-5 h-5 rounded-full bg-surface-container-high flex items-center justify-center shrink-0 font-data-mono text-[11px] text-secondary font-bold">
+                3
+              </div>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-tight">
+<span class="text-on-surface font-medium">Evita oclusiones</span> con tus dedos y contraluces fuertes durante la captura del frame.
+              </p>
+</div>
+<div class="flex items-start gap-space-sm">
+<div class="w-5 h-5 rounded-full bg-surface-container-high flex items-center justify-center shrink-0 font-data-mono text-[11px] text-secondary font-bold">
+                4
+              </div>
+<p class="font-body-sm text-body-sm text-on-surface-variant leading-tight">
+<span class="text-on-surface font-medium">Haz clic en 'Aprender objeto'</span> para sincronizar los tensores calculados con el firmware de las gafas.
+              </p>
+</div>
+</div>
+<!-- Hardware Shortcut reminder -->
+<div class="p-space-xs rounded bg-surface-container-lowest font-data-mono text-[10px] text-outline flex items-center justify-between">
+<span>Botón físico de patilla:</span>
+<span class="text-secondary font-semibold">Doble pulsación = Captura</span>
+</div>
+</div>
+</div>
+</div>
+</div>
+</div>
+<script>
+  function setObjName(name) {
+    const input = document.getElementById('object-name');
+    if (input) {
+      input.value = name;
+      input.focus();
+    }
+  }
+
+  function captureSample() {
+    const btn = document.getElementById('btn-capture');
+    if (btn) {
+      btn.classList.add('bg-surface-container-highest');
+      setTimeout(() => btn.classList.remove('bg-surface-container-highest'), 150);
+    }
+    // Simulate real-time HUD acoustic / visual feedback
+    const toast = document.createElement('div');
+    toast.className = 'fixed bottom-4 right-4 bg-secondary-container text-surface-container-lowest px-4 py-2 rounded font-data-mono text-label-md font-bold shadow-lg z-50 transition-opacity';
+    toast.textContent = '+ Tensor 768-D extraído exitosamente (Q: 99.1%)';
+    document.body.appendChild(toast);
+    setTimeout(() => {
+      toast.style.opacity = '0';
+      setTimeout(() => toast.remove(), 300);
+    }, 1800);
+  }
+
+  function clearSamples() {
+    if (confirm('¿Deseas purgar los 7 tensores no confirmados en memoria volátil?')) {
+      alert('Tensores purgados. Puedes iniciar la calibración de nuevo.');
+    }
+  }
+
+  function compileObject() {
+    const btn = document.getElementById('btn-compile');
+    const name = document.getElementById('object-name').value || 'Objeto';
+    btn.innerHTML = '<span class="material-symbols-outlined text-[18px] animate-spin">refresh</span><span>Indexando en MySQL...</span>';
+    setTimeout(() => {
+      btn.className = 'h-9 px-space-lg rounded bg-tertiary text-surface-container-lowest font-label-md text-label-md font-bold flex items-center gap-2';
+      btn.innerHTML = '<span class="material-symbols-outlined text-[18px]">check_circle</span><span>¡"' + name + '" Sincronizado!</span>';
+    }, 1200);
+  }
+
+  // Keyboard shortcut: Spacebar captures frame
+  window.addEventListener('keydown', (e) => {
+    if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') {
+      e.preventDefault();
+      captureSample();
+    }
+  });
+</script></main></div></body></html>

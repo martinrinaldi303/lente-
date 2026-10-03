@@ -1,4 +1,5 @@
-// identificar.js — marca, modelo, características y partes de UN dispositivo.
+// identificar.js — qué es lo del recuadro: marca, modelo, características y partes de
+// UN dispositivo; función y diseño de una pieza; especie y peligro de un animal.
 //
 // La red propia dice el tipo («celular»). Para la marca y el modelo hace falta
 // conocer miles de aparatos, y eso no se entrena acá: se le manda al LLM el recorte
@@ -26,29 +27,52 @@
 
 import jpeg from 'jpeg-js';
 import { MODELO as MODELO_DEEPSEEK, pedirChat } from './deepseek.js';
+import { fichaDe } from './fichas.js';
+import { NIVELES, pisoDePeligro } from './fichas_animales.js';
 import { regionCentral } from './imagen.js';
 
-const INSTRUCCION = `Sos un técnico que reconoce dispositivos electrónicos y aparatos por una foto. \
-Contestás en castellano rioplatense, en frases de 21 letras como mucho, sin puntos finales.
+// Desde el 3-oct-2026 no son sólo aparatos: también piezas de computadoras y de
+// celulares, y animales (cualquiera: la red propia conoce unos 60, el LLM miles).
+// Las trabas de arriba siguen iguales: un animal tampoco es una persona.
+const INSTRUCCION = `Sos un técnico y naturalista que reconoce por una foto tres cosas: aparatos \
+electrónicos, piezas de computadoras y de celulares, y animales. Contestás en castellano \
+rioplatense, en frases de 21 letras como mucho, sin puntos finales.
 
-Describí SOLAMENTE el aparato. Si en la foto aparece una persona (una cara, una mano, un cuerpo), \
-ignorala por completo: no la describas, no digas quién puede ser ni nada sobre ella.
+Describí SOLAMENTE el aparato, la pieza o el animal. Si en la foto aparece una persona (una cara, \
+una mano, un cuerpo), ignorala por completo: no la describas, no digas quién puede ser ni nada sobre ella.
 
-Si no ves ningún aparato, devolvé "tipo" vacío. Si no podés distinguir el modelo exacto, decí la \
-familia más probable y poné "seguridad" en "baja": es mejor eso que inventar un modelo.`;
+Aparato: marca y modelo. Si no podés distinguir el modelo exacto, decí la familia más probable y \
+poné "seguridad" en "baja": es mejor eso que inventar un modelo.
 
+Pieza (memoria RAM, fuente, placa de video, batería, flex, módulo de cámara…): qué pieza es, para \
+qué sirve ("funcion"), cómo es y dónde va ("diseno"), y qué mirar ("caracteristicas"): tipo, \
+capacidad, conector. Si tocarla tiene un riesgo (capacitores, batería hinchada), decilo primero.
+
+Animal: la especie más probable, cómo es ("caracteristicas"), el "peligro" para una persona que \
+se lo cruza sin molestarlo, y "que_hacer", lo más importante primero. Ante la duda entre una \
+especie peligrosa y una inofensiva, tomá la peligrosa: toda víbora se trata como venenosa. Nunca \
+digas que un animal es inofensivo si no estás seguro de la especie.
+
+Si no ves ninguna de las tres cosas, devolvé "tipo" vacío.`;
+
+const LISTA = (descripcion) => ({ type: 'ARRAY', items: { type: 'STRING' }, description: descripcion });
 const ESQUEMA = {
   type: 'OBJECT',
   properties: {
-    tipo:            { type: 'STRING', description: 'Qué aparato es, en una o dos palabras. Vacío si no hay ninguno' },
-    marca:           { type: 'STRING' },
-    modelo:          { type: 'STRING', description: 'El modelo o la familia más probable' },
+    categoria:       { type: 'STRING', enum: ['aparato', 'pieza', 'animal'] },
+    tipo:            { type: 'STRING', description: 'Qué es, en una o dos palabras: el aparato, la pieza o la especie. Vacío si no hay nada de eso' },
+    marca:           { type: 'STRING', description: 'Aparatos y piezas' },
+    modelo:          { type: 'STRING', description: 'El modelo o la familia más probable. Aparatos y piezas' },
     seguridad:       { type: 'STRING', enum: ['alta', 'media', 'baja'] },
-    por_que:         { type: 'STRING', description: 'En qué te fijaste: el logo, las cámaras, los puertos' },
-    caracteristicas: { type: 'ARRAY', items: { type: 'STRING' }, description: 'Hasta 6: pantalla, cámaras, puerto de carga, año aproximado' },
-    partes:          { type: 'ARRAY', items: { type: 'STRING' }, description: 'Hasta 8 partes, en el orden en que se desarma' },
+    por_que:         { type: 'STRING', description: 'En qué te fijaste: el logo, los conectores, las manchas, la forma' },
+    caracteristicas: LISTA('Hasta 6: de un aparato, pantalla, cámaras, año; de una pieza, tipo, capacidad, conector; de un animal, cómo es'),
+    partes:          LISTA('Aparatos: hasta 8 partes, en el orden en que se desarma'),
+    funcion:         LISTA('Piezas: hasta 3, para qué sirve'),
+    diseno:          LISTA('Piezas: hasta 3, cómo es y dónde va'),
+    peligro:         { type: 'STRING', enum: NIVELES, description: 'Animales: para una persona que se lo cruza' },
+    que_hacer:       LISTA('Animales: hasta 4, lo más importante primero'),
   },
-  required: ['tipo', 'seguridad', 'caracteristicas', 'partes'],
+  required: ['categoria', 'tipo', 'seguridad', 'caracteristicas'],
 };
 
 // Lo único que viaja, como JPEG: el recorte del APARATO si el detector lo localizó
@@ -72,24 +96,43 @@ export function recorteDelRecuadro(cuadroJpeg, caja = null) {
 
 const limpiar = (s, largo = 60) => String(s ?? '').replace(/\s+/g, ' ').trim().slice(0, largo);
 
-// Lo que contestó el modelo, saneado. null si no vio ningún aparato.
+// Lo que contestó el modelo, saneado. null si no vio nada de lo que reconoce.
+// De un animal, el peligro nunca queda por debajo de:
+//   · el piso de su grupo (toda víbora «alto»: ver pisoDePeligro),
+//   · el de la ficha propia, si la especie tiene (fichas_animales.js),
+//   · «medio», si el modelo no está seguro de la especie: «inofensivo» con una foto
+//     dudosa es justo el error que no se puede cometer.
 export function normalizar(crudo) {
   const tipo = limpiar(crudo?.tipo, 21);
   if (!tipo) return null;
   const lista = (v, max) => (Array.isArray(v) ? v : []).map(x => limpiar(x)).filter(Boolean).slice(0, max);
-  return {
-    tipo,
-    marca: limpiar(crudo.marca, 21),
-    modelo: limpiar(crudo.modelo, 40),
-    seguridad: ['alta', 'media', 'baja'].includes(crudo.seguridad) ? crudo.seguridad : 'baja',
+  const categoria = ['aparato', 'pieza', 'animal'].includes(crudo.categoria) ? crudo.categoria : 'aparato';
+  const seguridad = ['alta', 'media', 'baja'].includes(crudo.seguridad) ? crudo.seguridad : 'baja';
+  const f = {
+    categoria, tipo, seguridad,
+    marca: categoria === 'animal' ? '' : limpiar(crudo.marca, 21),
+    modelo: categoria === 'animal' ? '' : limpiar(crudo.modelo, 40),
     por_que: limpiar(crudo.por_que, 80),
     caracteristicas: lista(crudo.caracteristicas, 6),
-    partes: lista(crudo.partes, 8),
+    partes: categoria === 'aparato' ? lista(crudo.partes, 8) : [],
   };
+  if (categoria === 'pieza') Object.assign(f, { funcion: lista(crudo.funcion, 3), diseno: lista(crudo.diseno, 3) });
+  if (categoria === 'animal') {
+    const propia = fichaDe(tipo)?.tipo === 'animal' ? fichaDe(tipo).f : null;
+    let i = Math.max(NIVELES.indexOf(crudo.peligro), NIVELES.indexOf('bajo'));
+    if (propia) i = Math.max(i, NIVELES.indexOf(propia.peligro));
+    if (seguridad === 'baja') i = Math.max(i, NIVELES.indexOf('medio'));
+    const peligro = pisoDePeligro(tipo, NIVELES[i]);
+    let queHacer = lista(crudo.que_hacer, 4);
+    if (!queHacer.length && propia) queHacer = propia.hacer.slice();
+    if (!queHacer.length && peligro !== 'bajo') queHacer = ['No te acerques'];
+    Object.assign(f, { peligro, que_hacer: queHacer });
+  }
+  return f;
 }
 
-const pregunta = (pista) => pista ? `La red de las gafas cree que es: ${pista}. ¿Qué aparato es, de qué marca y modelo?`
-                                  : '¿Qué aparato es, de qué marca y modelo?';
+const pregunta = (pista) => pista ? `La red de las gafas cree que es: ${pista}. ¿Qué es: un aparato, una pieza o un animal?`
+                                  : '¿Qué es: un aparato (marca y modelo), una pieza o un animal?';
 
 export const MS_POR_INTENTO = 12000;
 export function conPlazo(promesa, ms) {
@@ -140,12 +183,16 @@ export function crearIdentificador({ ia, modelo, reserva = null, msPorIntento = 
 // vuelva pasa igual por normalizar(), que tira todo lo que no esté en la ficha. Tampoco
 // acá hay dónde poner el nombre de una persona.
 const FORMATO_JSON = `Contestá SOLAMENTE con un objeto json con esta forma, sin texto alrededor:
-{"tipo": "qué aparato es, en una o dos palabras; vacío si no hay ninguno",
- "marca": "", "modelo": "el modelo o la familia más probable",
+{"categoria": "aparato, pieza o animal",
+ "tipo": "qué es, en una o dos palabras; vacío si no hay nada de eso",
+ "marca": "", "modelo": "el modelo o la familia más probable (aparatos y piezas)",
  "seguridad": "alta, media o baja",
- "por_que": "en qué te fijaste: el logo, las cámaras, los puertos",
- "caracteristicas": ["hasta 6: pantalla, cámaras, puerto de carga, año aproximado"],
- "partes": ["hasta 8 partes, en el orden en que se desarma"]}`;
+ "por_que": "en qué te fijaste: el logo, los conectores, las manchas, la forma",
+ "caracteristicas": ["hasta 6"],
+ "partes": ["aparatos: hasta 8 partes, en el orden en que se desarma"],
+ "funcion": ["piezas: hasta 3, para qué sirve"], "diseno": ["piezas: hasta 3, cómo es y dónde va"],
+ "peligro": "animales: bajo, medio, alto o muy alto",
+ "que_hacer": ["animales: hasta 4, lo más importante primero"]}`;
 
 // La misma función que crearIdentificador, con la API de DeepSeek: (cuadroJpeg, pista, caja) → ficha | null.
 // `traer` es fetch; se cambia por uno de mentira para probar sin red.

@@ -1,0 +1,335 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MIIA · Configuración</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap">
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="tw-config.js"></script>
+<link rel="stylesheet" href="panel.css">
+</head>
+<body class="bg-surface">
+<main class="contenido pt-14 lg:pl-64" style="min-height:100vh">
+      <div class="encabezado">
+        <span class="rotulo">Module // <b>Configuración</b> / anteojos y perfil</span>
+        <h1>Mis anteojos</h1>
+        <p>Cada par que vincules entra al cerebro con su propia llave y usa lo que vos le enseñaste. Si desvinculás un par o le cambiás la llave, se desconecta en el momento.</p>
+      </div>
+      <div id="mensaje" class="aviso" role="status" hidden></div>
+
+      <div class="rejilla">
+        <div class="columna">
+          <section class="modulo" aria-labelledby="hAnteojos">
+            <header><h3 id="hAnteojos">Anteojos vinculados</h3><span class="derecha rotulo" id="cuantos"></span></header>
+            <div class="cuerpo" id="listaAnteojos"><p class="ayuda">Cargando…</p></div>
+          </section>
+
+          <section class="modulo" aria-labelledby="hVincular">
+            <header><h3 id="hVincular">Vincular anteojos nuevos</h3></header>
+            <div class="cuerpo">
+              <form id="fVincular" class="formulario">
+                <div class="fila-campos">
+                  <div class="campo"><label for="vNombre">Nombre</label><input id="vNombre" maxlength="40" placeholder="Mis gafas" required></div>
+                  <div class="campo"><label for="vModelo">Modelo</label>
+                    <select id="vModelo">
+                      <option>XIAO ESP32-S3 Sense</option>
+                      <option>Emulador del navegador</option>
+                      <option>Otro</option>
+                    </select>
+                  </div>
+                </div>
+                <button class="boton primario" type="submit" style="justify-self:start">Vincular</button>
+              </form>
+              <div id="llave" class="llave" hidden>
+                <div class="rotulo"><b>Llave de</b> <span id="llaveDe"></span></div>
+                <code id="llaveTexto"></code>
+                <p class="ayuda">Va en <span class="mono">firmware/gafas_xiao/config.h</span> de esos anteojos:</p>
+                <pre id="llaveConfig"></pre>
+                <div style="display:flex;gap:8px;flex-wrap:wrap">
+                  <button class="boton" type="button" id="copiarLlave">Copiar la llave</button>
+                  <button class="boton" type="button" id="cerrarLlave">Ya la guardé</button>
+                </div>
+                <p class="ayuda"><b style="color:var(--ambar)">Copiala ahora:</b> no se vuelve a mostrar. Si la perdés, pedí una llave nueva.</p>
+              </div>
+            </div>
+          </section>
+        </div>
+
+        <div class="columna">
+          <section class="modulo" aria-labelledby="hRed">
+            <header><h3 id="hRed">Modelo asociado</h3><span class="derecha chip" id="claveRed">—</span></header>
+            <div class="cuerpo">
+              <p class="ayuda">Lo que le enseñaste con «Enseñar». Todos tus anteojos usan esta misma red: lo que aprende uno, lo sabe el otro.</p>
+              <div id="objetos"></div>
+            </div>
+          </section>
+
+          <section class="modulo" aria-labelledby="hSinCuenta" id="sinCuenta" hidden>
+            <header><h3 id="hSinCuenta">Lo aprendido antes de la cuenta</h3></header>
+            <div class="cuerpo">
+              <p class="ayuda">Esto se enseñó sin cuenta, en esta computadora. Como tu cuenta es la primera, lo podés pasar a tu nombre.</p>
+              <div id="objetosSinCuenta"></div>
+              <button class="boton primario" type="button" id="traer" style="justify-self:start">Pasarlo a mi cuenta</button>
+            </div>
+          </section>
+
+          <section class="modulo" aria-labelledby="hPerfil">
+            <header><h3 id="hPerfil">Mi perfil</h3></header>
+            <div class="cuerpo">
+              <form id="fPerfil" class="formulario">
+                <div class="campo"><label for="pNombre">Nombre</label><input id="pNombre" maxlength="60" required></div>
+                <div class="campo"><label for="pCorreo">Correo</label><input id="pCorreo" readonly></div>
+                <div class="campo"><label for="pEdad">Edad <small>(opcional)</small></label><input id="pEdad" type="number" inputmode="numeric" min="1" max="120"></div>
+                <button class="boton primario" type="submit" style="justify-self:start">Guardar</button>
+              </form>
+              <div id="filaGoogle" class="formulario" hidden>
+                <div class="dato"><span>Cuenta de Google</span><span id="estadoGoogle">—</span></div>
+                <div id="botonGoogle" class="boton-google" style="justify-content:flex-start" hidden></div>
+                <button class="boton" type="button" id="desvincularGoogle" style="justify-self:start" hidden>Desvincular Google</button>
+              </div>
+            </div>
+          </section>
+
+          <section class="modulo" aria-labelledby="hClave">
+            <header><h3 id="hClave">Contraseña</h3></header>
+            <div class="cuerpo">
+              <p class="ayuda" id="sinClave" hidden>Entraste con Google y no tenés contraseña. Si ponés una, también podés entrar con tu correo.</p>
+              <form id="fClave" class="formulario">
+                <div class="fila-campos">
+                  <div class="campo" id="campoActual"><label for="kActual">Actual</label><input id="kActual" type="password" autocomplete="current-password" required></div>
+                  <div class="campo"><label for="kNueva">Nueva <small>(8 o más)</small></label><input id="kNueva" type="password" autocomplete="new-password" minlength="8" required></div>
+                </div>
+                <button class="boton" type="submit" style="justify-self:start">Cambiar contraseña</button>
+                <p class="ayuda">Cierra las otras sesiones abiertas del panel.</p>
+              </form>
+            </div>
+          </section>
+
+          <section class="modulo" aria-labelledby="hBorrar">
+            <header><h3 id="hBorrar">Borrar mi cuenta</h3></header>
+            <div class="cuerpo">
+              <p class="ayuda">Borra la cuenta, tus anteojos vinculados, lo que les enseñaste y todo lo anotado con ella. No se puede deshacer.</p>
+              <form id="fBorrar" class="formulario">
+                <div class="campo"><label for="bClave" id="bEtiqueta">Tu contraseña, para confirmar</label><input id="bClave" type="password" autocomplete="current-password" required></div>
+                <button class="boton peligro" type="submit" style="justify-self:start">Borrar mi cuenta</button>
+              </form>
+            </div>
+          </section>
+        </div>
+      </div>
+    </main>
+
+<script src="shell.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const EMULADOR = 'Emulador del navegador';
+let yo = null;
+
+// Arma un elemento sin pasar nada por innerHTML: los nombres los escribe el usuario.
+function h(etiqueta, atributos = {}, ...hijos) {
+  const el = document.createElement(etiqueta);
+  for (const [k, v] of Object.entries(atributos)) {
+    if (k === 'class') el.className = v; else if (k.startsWith('on')) el[k] = v; else el.setAttribute(k, v);
+  }
+  for (const hijo of hijos.flat()) if (hijo !== null && hijo !== undefined && hijo !== false) el.append(hijo instanceof Node ? hijo : String(hijo));
+  return el;
+}
+
+function mostrar(texto, tipo = 'ok') {
+  const m = $('mensaje');
+  m.textContent = texto;
+  m.className = `aviso ${tipo}`;
+  m.hidden = !texto;
+  if (texto && tipo === 'ok') setTimeout(() => { if (m.textContent === texto) m.hidden = true; }, 6000);
+}
+
+async function api(metodo, ruta, cuerpo) {
+  const r = await fetch(`/api/${ruta}`, {
+    method: metodo,
+    headers: cuerpo ? { 'Content-Type': 'application/json' } : {},
+    body: cuerpo ? JSON.stringify(cuerpo) : undefined,
+  });
+  const datos = await r.json().catch(() => ({}));
+  if (r.status === 401) { location.replace('/cuenta.html'); throw new Error('Tenés que entrar con tu cuenta'); }
+  if (!r.ok) throw new Error(datos.motivo || `El cerebro contestó ${r.status}`);
+  return datos;
+}
+
+function haceCuanto(fecha) {
+  if (!fecha) return 'nunca';
+  const min = Math.floor((Date.now() - new Date(fecha).getTime()) / 60000);
+  if (min < 1) return 'recién';
+  if (min < 60) return `hace ${min} min`;
+  if (min < 48 * 60) return `hace ${Math.floor(min / 60)} h`;
+  return `hace ${Math.floor(min / 1440)} días`;
+}
+
+function tablaObjetos(objetos) {
+  if (!objetos.length) return h('p', { class: 'ayuda' }, 'Todavía nada. Abrí el emulador, poné un objeto en el recuadro y apretá «Enseñar».');
+  return h('table', { class: 'tabla-objetos' },
+    h('thead', {}, h('tr', {}, h('th', {}, 'Objeto'), h('th', {}, 'Ejemplos'))),
+    h('tbody', {}, objetos.map(o => h('tr', {}, h('td', {}, o.nombre), h('td', {}, o.ejemplos)))));
+}
+
+function tarjetaAnteojo(a) {
+  const esEmulador = a.modelo === EMULADOR;
+  return h('div', { class: 'anteojo' },
+    h('div', { class: 'titulo' },
+      h('span', { class: `pip ${a.conectado ? 'verde' : ''}`, title: a.conectado ? 'Conectado' : 'Desconectado' }),
+      h('strong', {}, a.nombre),
+      h('span', { class: 'chip' }, a.modelo)),
+    h('div', { class: 'datos' },
+      h('span', { class: 'chip' }, 'ESTADO: ', h('b', { style: `color:${a.conectado ? 'var(--verde)' : 'var(--texto-2)'}` }, a.conectado ? 'CONECTADO' : 'DESCONECTADO')),
+      h('span', { class: 'chip' }, 'ÚLT. CONEXIÓN: ', h('b', {}, haceCuanto(a.ultima_conexion))),
+      h('span', { class: 'chip' }, 'LLAVE: ', h('b', {}, esEmulador ? 'sesión del panel' : a.con_llave ? 'sí' : 'no'))),
+    h('div', { class: 'acciones' },
+      esEmulador ? h('a', { class: 'boton', href: '/vision.html' }, 'Abrir Visión') :
+        h('button', { class: 'boton', type: 'button', onclick: () => llaveNueva(a) }, 'Llave nueva'),
+      h('button', { class: 'boton peligro', type: 'button', onclick: () => desvincular(a) }, 'Desvincular')));
+}
+
+function pintar(datos) {
+  yo = datos;
+  const u = datos.usuario, anteojos = datos.anteojos;
+  const conectados = anteojos.filter(a => a.conectado).length;
+  App.enlace({ estado: conectados ? 'conectado' : undefined, texto: conectados ? `${conectados} anteojo${conectados > 1 ? 's' : ''} conectado${conectados > 1 ? 's' : ''}` : 'Ningún anteojo conectado', detalle: `${anteojos.length} vinculado${anteojos.length === 1 ? '' : 's'}` });
+  $('cuantos').textContent = `${anteojos.length} par${anteojos.length === 1 ? '' : 'es'}`;
+  $('listaAnteojos').replaceChildren(...(anteojos.length ? anteojos.map(tarjetaAnteojo)
+    : [h('p', { class: 'ayuda' }, 'Todavía no vinculaste ninguno. El emulador aparece solo la primera vez que lo abrís con tu cuenta.')]));
+  $('claveRed').textContent = datos.red ? datos.red.clave : 'sin cargar';
+  $('objetos').replaceChildren(tablaObjetos(datos.red?.objetos ?? []));
+  $('sinCuenta').hidden = !datos.sin_cuenta?.length;
+  $('objetosSinCuenta').replaceChildren(tablaObjetos(datos.sin_cuenta ?? []));
+  if (document.activeElement?.closest('#fPerfil') == null) {
+    $('pNombre').value = u.nombre; $('pCorreo').value = u.correo; $('pEdad').value = u.edad ?? '';
+  }
+  // Sin contraseña (entró con Google): se pone una sin «actual», y borrar se confirma con el correo.
+  $('sinClave').hidden = u.con_clave;
+  $('campoActual').hidden = !u.con_clave;
+  $('kActual').required = u.con_clave;
+  $('hClave').textContent = u.con_clave ? 'Contraseña' : 'Poner contraseña';
+  $('bEtiqueta').textContent = u.con_clave ? 'Tu contraseña, para confirmar' : 'Escribí tu correo, para confirmar';
+  $('bClave').type = u.con_clave ? 'password' : 'email';
+  pintarGoogle(u);
+}
+
+// Vincular o desvincular la cuenta de Google. El botón lo dibuja Google; sólo si el
+// cerebro tiene GOOGLE_CLIENT_ID y la página se abrió con localhost.
+let config = {}, googleListo = false;
+function pintarGoogle(u) {
+  const hay = Boolean(config.google);
+  $('filaGoogle').hidden = !hay && !u.con_google;
+  $('estadoGoogle').textContent = u.con_google ? 'vinculada' : hay ? 'no vinculada' : 'no configurada';
+  $('desvincularGoogle').hidden = !u.con_google;
+  $('botonGoogle').hidden = u.con_google || !hay;
+  if (!u.con_google && hay && !googleListo) {
+    googleListo = true;
+    if (location.hostname === '127.0.0.1') {
+      $('botonGoogle').replaceChildren(Object.assign(document.createElement('a'), {
+        className: 'boton', href: `http://localhost:${location.port}${location.pathname}`, textContent: 'Para vincular Google, abrí el panel con localhost' }));
+      return;
+    }
+    const s = document.createElement('script');
+    s.src = 'https://accounts.google.com/gsi/client';
+    s.async = true;
+    s.onload = () => {
+      google.accounts.id.initialize({ client_id: config.google, ux_mode: 'popup', context: 'use', callback: async ({ credential }) => {
+        try { await api('POST', 'yo/google', { credencial: credential }); mostrar('Listo: ahora también podés entrar con Google'); await cargar(); }
+        catch (e) { mostrar(e.message, 'error'); }
+      } });
+      google.accounts.id.renderButton($('botonGoogle'), { theme: 'filled_black', size: 'medium', text: 'signin_with', shape: 'rectangular', locale: 'es-419' });
+    };
+    document.head.append(s);
+  }
+}
+
+$('desvincularGoogle').onclick = async () => {
+  if (!confirm('¿Desvincular tu cuenta de Google? Vas a entrar sólo con tu correo y contraseña.')) return;
+  try { await api('DELETE', 'yo/google', {}); googleListo = false; mostrar('Desvinculé Google'); await cargar(); }
+  catch (e) { mostrar(e.message, 'error'); }
+};
+
+async function cargar() {
+  try { pintar(await api('GET', 'yo')); }
+  catch (e) {
+    if (/base de datos/.test(e.message)) {
+    }
+    mostrar(e.message === 'Failed to fetch' ? 'No hay conexión con el cerebro: ¿está corriendo «npm start»?' : e.message, 'error');
+  }
+}
+
+function mostrarLlave(nombre, token) {
+  $('llaveDe').textContent = nombre;
+  $('llaveTexto').textContent = token;
+  $('llaveConfig').textContent = `#define TOKEN_GAFAS    "${token}"`;
+  $('llave').hidden = false;
+  $('llave').scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
+
+async function llaveNueva(a) {
+  if (!confirm(`¿Llave nueva para «${a.nombre}»? La de ahora deja de andar y esos anteojos se desconectan.`)) return;
+  try { mostrarLlave(a.nombre, (await api('POST', `anteojos/${a.id}/llave`, {})).token); await cargar(); }
+  catch (e) { mostrar(e.message, 'error'); }
+}
+
+async function desvincular(a) {
+  if (!confirm(`¿Desvincular «${a.nombre}»? Se desconecta y su llave deja de andar.`)) return;
+  try { await api('DELETE', `anteojos/${a.id}`, {}); mostrar(`Desvinculé «${a.nombre}»`); await cargar(); }
+  catch (e) { mostrar(e.message, 'error'); }
+}
+
+$('fVincular').onsubmit = async (e) => {
+  e.preventDefault();
+  try {
+    const r = await api('POST', 'anteojos', { nombre: $('vNombre').value, modelo: $('vModelo').value });
+    if (r.token) mostrarLlave(r.anteojos.nombre, r.token);
+    else mostrar(`Vinculé «${r.anteojos.nombre}»: entra con tu sesión del panel, sin llave`);
+    $('vNombre').value = '';
+    await cargar();
+  } catch (err) { mostrar(err.message, 'error'); }
+};
+
+$('copiarLlave').onclick = async () => {
+  try { await navigator.clipboard.writeText($('llaveTexto').textContent); mostrar('Llave copiada'); }
+  catch { mostrar('No pude copiarla: seleccioná el texto y copialo a mano', 'atencion'); }
+};
+$('cerrarLlave').onclick = () => { $('llave').hidden = true; $('llaveTexto').textContent = ''; $('llaveConfig').textContent = ''; };
+
+$('traer').onclick = async () => {
+  try { const r = await api('POST', 'yo/traer-sin-cuenta', {}); mostrar(`Listo: ${r.movidos} objeto${r.movidos === 1 ? '' : 's'} pasaron a tu cuenta. Reconectá el emulador para usarlos.`); await cargar(); }
+  catch (e) { mostrar(e.message, 'error'); }
+};
+
+$('fPerfil').onsubmit = async (e) => {
+  e.preventDefault();
+  try { await api('PATCH', 'yo', { nombre: $('pNombre').value, edad: $('pEdad').value }); mostrar('Perfil guardado'); document.activeElement.blur(); await cargar(); }
+  catch (err) { mostrar(err.message, 'error'); }
+};
+
+$('fClave').onsubmit = async (e) => {
+  e.preventDefault();
+  try { await api('POST', 'yo/clave', { actual: $('kActual').value, nueva: $('kNueva').value }); e.target.reset(); mostrar('Contraseña cambiada'); }
+  catch (err) { mostrar(err.message, 'error'); }
+};
+
+$('fBorrar').onsubmit = async (e) => {
+  e.preventDefault();
+  if (!confirm('¿Borrar tu cuenta y todo lo suyo? No se puede deshacer.')) return;
+  try { await api('POST', 'yo/borrar', { clave: $('bClave').value }); location.replace('/cuenta.html'); }
+  catch (err) { mostrar(err.message, 'error'); }
+};
+
+
+// La barra lateral y la de arriba son las de todas las pantallas (shell.js).
+App.montar('configuracion', { subtitulo: 'Cuenta y anteojos' })
+  .then(() => fetch('/api/config').then(r => r.json()).then(c => { config = c; }).catch(() => {}))
+  .then(cargar)
+  .catch((e) => mostrar(e.message, 'error'));
+// El estado de conexión de los anteojos cambia solo: se vuelve a pedir cada 10 s.
+setInterval(() => { if (!document.hidden && $('llave').hidden) cargar(); }, 10000);
+</script>
+</body>
+</html>

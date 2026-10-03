@@ -1,0 +1,385 @@
+<!DOCTYPE html>
+<html class="dark" lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MIIA · Visión</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap"/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="tw-config.js"></script>
+<style>
+  body { overscroll-behavior: none; font-variant-numeric: tabular-nums; }
+  #hud { image-rendering: pixelated; mix-blend-mode: screen; }
+  #vista.alerta { animation: alerta 0.45s 4 alternate; }
+  @keyframes alerta { from { box-shadow: inset 0 0 0 0 #ef4444; } to { box-shadow: inset 0 0 0 10px #ef4444; } }
+  .interruptor.on { background: rgb(47 227 120 / .2); color: #2fe378; }
+  .interruptor.off { background: rgb(147 0 10 / .2); color: #ffb4ab; }
+  .interruptor:disabled { opacity: .45; cursor: default; }
+  button:disabled { opacity: .45; cursor: default; }
+</style>
+</head>
+<body class="bg-surface font-body-md text-body-md text-on-surface antialiased">
+<main class="pt-14 lg:pl-64 min-h-screen">
+<div class="px-space-xl py-space-lg flex flex-col gap-space-lg">
+
+  <!-- Estado de la consola -->
+  <div class="flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-space-md bg-surface-container-low p-space-md rounded-lg">
+    <div class="flex items-center gap-space-md min-w-0">
+      <div class="w-10 h-10 rounded bg-surface-container flex items-center justify-center text-primary shrink-0"><span class="material-symbols-outlined text-[24px]" aria-hidden="true">terminal</span></div>
+      <div class="flex flex-col min-w-0">
+        <div class="flex items-center gap-space-xs flex-wrap">
+          <h1 class="font-headline-sm text-headline-sm font-semibold text-on-surface">Consola de Visión</h1>
+          <span id="insignia" class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-surface-container-high text-outline font-data-mono font-semibold">—</span>
+        </div>
+        <span id="quien" class="font-body-sm text-body-sm text-on-surface-variant font-data-mono truncate">Conectando…</span>
+      </div>
+    </div>
+    <div class="flex flex-wrap items-center gap-space-xs font-data-mono text-data-mono">
+      <div class="px-space-sm py-space-xs bg-surface-container rounded flex items-center gap-space-xs"><span class="text-outline">CUADROS/S:</span><span id="cps" class="text-tertiary">0</span></div>
+      <div class="px-space-sm py-space-xs bg-surface-container rounded flex items-center gap-space-xs"><span class="text-outline">RED:</span><span id="red" class="text-primary">—</span></div>
+      <div class="px-space-sm py-space-xs bg-surface-container rounded flex items-center gap-space-xs"><span class="text-outline">BASE:</span><span id="base" class="text-secondary">—</span></div>
+      <div class="px-space-sm py-space-xs bg-surface-container rounded flex items-center gap-space-xs"><span class="text-outline">VOZ:</span><span id="voz" class="text-tertiary">—</span></div>
+    </div>
+  </div>
+
+  <!-- El estado real, en una frase -->
+  <div id="banner" class="rounded-lg p-space-md bg-surface-container-high flex flex-col gap-space-xs">
+    <div class="flex items-center justify-between gap-space-sm flex-wrap">
+      <div class="flex items-center gap-space-sm"><span id="bannerIcono" class="material-symbols-outlined text-outline text-[20px]" aria-hidden="true">pending</span><span id="bannerTitulo" class="font-headline-sm text-headline-sm font-semibold text-on-surface">Conectando con el cerebro…</span></div>
+      <span id="bannerChip" class="font-data-mono text-data-mono px-2 py-0.5 rounded bg-surface-container text-outline uppercase">—</span>
+    </div>
+    <p id="bannerTexto" class="font-body-sm text-body-sm text-on-surface-variant"></p>
+  </div>
+
+  <div class="grid grid-cols-1 xl:grid-cols-12 gap-space-lg items-start">
+    <!-- Izquierda: la cámara con el HUD, y el registro -->
+    <div class="xl:col-span-7 flex flex-col gap-space-lg min-w-0">
+      <section class="bg-surface-container-lowest rounded-lg p-space-md flex flex-col gap-space-sm">
+        <div class="flex items-center justify-between gap-space-sm flex-wrap">
+          <div class="flex items-center gap-space-sm"><span id="pipCam" class="w-2 h-2 rounded-full bg-outline-variant"></span><h2 class="font-headline-sm text-headline-sm text-on-surface font-semibold tracking-tight">Cámara · lo que ven las gafas</h2></div>
+          <div class="flex items-center gap-space-xs font-data-mono text-data-mono text-outline"><span id="nombreCam">sin cámara</span><span>·</span><span id="resCam">2 cuadros/s</span></div>
+        </div>
+        <div id="vista" class="relative w-full aspect-[4/3] rounded bg-surface overflow-hidden flex items-center justify-center">
+          <video id="video" class="absolute inset-0 w-full h-full object-fill" muted playsinline></video>
+          <canvas id="cajas" class="absolute inset-0 w-full h-full cursor-crosshair" width="640" height="480" title="Tocá un recuadro que esté mal para corregirlo"></canvas>
+          <!-- El centro de la mirada -->
+          <div class="absolute inset-0 pointer-events-none flex items-center justify-center"><div class="w-12 h-12 relative flex items-center justify-center"><div class="w-full h-[1px] bg-outline-variant/40"></div><div class="h-full w-[1px] bg-outline-variant/40 absolute"></div><div class="w-3 h-3 rounded-full bg-surface/40 flex items-center justify-center absolute"><div class="w-1 h-1 rounded-full bg-primary"></div></div></div></div>
+          <!-- La pantalla de las gafas, encima. Para leer: la tarjeta. Para ver el OLED tal
+               cual lo va a dibujar el ESP32 (aditivo: el negro no se ve), el lienzo. -->
+          <div id="tarjetaHud" class="absolute top-[3%] right-[3%] w-max max-w-[55%] sm:max-w-[45%] min-w-[9rem] pointer-events-none rounded-lg backdrop-blur-sm shadow-lg px-space-md py-space-sm flex flex-col gap-space-xs" aria-live="polite"></div>
+          <canvas id="hud" class="hidden absolute top-[3%] right-[3%] w-[52%] aspect-[2/1] pointer-events-none" width="128" height="64"></canvas>
+          <!-- Sin cámara -->
+          <div id="sinCamara" class="absolute inset-0 bg-surface-container-lowest flex flex-col items-center justify-center p-space-lg text-center gap-space-sm">
+            <div class="w-12 h-12 rounded-full bg-surface-container flex items-center justify-center text-outline"><span class="material-symbols-outlined text-[28px]" aria-hidden="true">videocam_off</span></div>
+            <span class="font-headline-sm text-headline-sm font-semibold text-on-surface">La cámara está apagada</span>
+            <p class="font-body-sm text-body-sm text-outline max-w-sm">Mientras no haya gafas de verdad, la cámara de esta computadora hace de cámara de las gafas.</p>
+            <button id="prender" type="button" class="h-9 px-space-lg rounded bg-primary-container text-on-primary-container hover:bg-primary font-label-md text-label-md font-semibold flex items-center gap-2"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">videocam</span>Prender la cámara</button>
+          </div>
+          <!-- Abajo: lo que se está mirando -->
+          <div class="absolute bottom-0 left-0 right-0 bg-surface-container-lowest/85 backdrop-blur-sm px-space-md py-space-xs flex items-center justify-between gap-space-sm font-data-mono text-data-mono">
+            <div class="flex items-center gap-space-md min-w-0"><span id="vivo" class="text-outline flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-outline"></span>OFF</span><span class="text-on-surface-variant truncate">MIRANDO: <span id="mirando" class="text-on-surface">—</span></span></div>
+            <span class="text-primary font-bold hidden sm:inline">FEW-SHOT DINOv2</span>
+          </div>
+        </div>
+        <div class="flex flex-wrap items-center justify-between gap-space-xs pt-space-xs">
+          <div class="flex flex-wrap items-center gap-space-xs">
+            <button id="identificar" type="button" title="Aparato (marca y modelo), pieza de compu o celular, o animal (y su peligro): lo identifica el LLM a pedido" class="px-space-sm py-1 rounded bg-surface-container text-on-surface font-label-md text-label-md hover:bg-surface-container-high flex items-center gap-1"><span class="material-symbols-outlined text-[16px]" aria-hidden="true">frame_inspect</span>¿Qué es?</button>
+            <button id="escena" type="button" title="Todo lo que se ve a la vez, con distancias y qué tiene cada persona. En las gafas, sólo cuando lo pedís" class="px-space-sm py-1 rounded bg-surface-container text-on-surface font-label-md text-label-md hover:bg-surface-container-high flex items-center gap-1"><span class="material-symbols-outlined text-[16px]" aria-hidden="true">category</span>Escena</button>
+            <button id="leer" type="button" class="px-space-sm py-1 rounded bg-surface-container text-on-surface font-label-md text-label-md hover:bg-surface-container-high flex items-center gap-1"><span class="material-symbols-outlined text-[16px]" aria-hidden="true">document_scanner</span>Leer texto</button>
+            <select id="traducir" class="h-7 px-space-xs rounded bg-surface-container text-on-surface font-label-md text-label-md" aria-label="Traducir al">
+              <option value="">sin traducir</option><option value="inglés">al inglés</option><option value="portugués">al portugués</option><option value="castellano">al castellano</option>
+            </select>
+            <button id="guardarTarjeta" type="button" class="px-space-sm py-1 rounded bg-surface-container text-on-surface font-label-md text-label-md hover:bg-surface-container-high flex items-center gap-1"><span class="material-symbols-outlined text-[16px]" aria-hidden="true">qr_code_2</span>Guardar QR</button>
+            <button id="anterior" type="button" class="px-space-sm py-1 rounded bg-surface-container text-on-surface font-label-md text-label-md hover:bg-surface-container-high" aria-label="Paso o página anterior">◀</button>
+            <button id="siguiente" type="button" class="px-space-sm py-1 rounded bg-surface-container text-on-surface font-label-md text-label-md hover:bg-surface-container-high" aria-label="Paso o página siguiente">▶</button>
+          </div>
+          <div class="flex flex-wrap items-center gap-space-md">
+            <label class="flex items-center gap-space-xs font-label-sm text-label-sm text-outline" title="Muestra la pantalla de 128×64 tal cual la dibujan las gafas"><input id="verOled" type="checkbox" class="accent-[#0ea5e9]"/> PANTALLA OLED REAL</label>
+            <label class="flex items-center gap-space-xs font-label-sm text-label-sm text-outline" title="Dibuja todo lo seguro a la vez, con distancias aproximadas y lo que tiene cada persona"><input id="verEscena" type="checkbox" class="accent-[#2fe378]"/> VER VARIOS OBJETOS</label>
+            <label class="flex items-center gap-space-xs font-label-sm text-label-sm text-outline" title="Muestra también lo que el detector marcó y NO se usa (punteado): lo dudoso y lo que está fuera de la mirada"><input id="verTodo" type="checkbox" class="accent-[#0ea5e9]"/> VER LO DESCARTADO</label>
+          </div>
+        </div>
+        <p class="font-body-sm text-body-sm text-outline flex flex-wrap items-center gap-x-space-sm">¿Un recuadro está mal (ropa marcada como persona)? Tocalo sobre la imagen y las gafas aprenden que eso no es. <button id="olvidarCorrecciones" type="button" class="underline hover:text-on-surface">Olvidar las correcciones</button></p>
+      </section>
+
+      <section class="bg-surface-container-lowest rounded-lg p-space-md flex flex-col gap-space-sm">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-primary text-[18px]" aria-hidden="true">terminal</span><h2 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Registro de eventos</h2></div>
+          <div class="flex items-center gap-space-xs">
+            <button id="limpiarRegistro" type="button" class="px-space-xs py-0.5 rounded bg-surface-container text-outline hover:text-on-surface text-[10px] font-data-mono">CLEAR</button>
+            <button id="autoscroll" type="button" class="px-space-xs py-0.5 rounded bg-surface-container text-tertiary text-[10px] font-data-mono">AUTOSCROLL: ON</button>
+          </div>
+        </div>
+        <div id="registro" class="h-64 overflow-y-auto bg-surface-dim rounded p-space-sm font-data-mono text-data-mono flex flex-col gap-1 select-text"></div>
+      </section>
+    </div>
+
+    <!-- Derecha: interruptores, MIIA y lo demás -->
+    <div class="xl:col-span-5 flex flex-col gap-space-lg min-w-0">
+      <section class="bg-surface-container-lowest rounded-lg p-space-md flex flex-col gap-space-md">
+        <div class="flex items-center justify-between"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-secondary text-[20px]" aria-hidden="true">tune</span><h2 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Interruptores</h2></div></div>
+        <div class="flex flex-col gap-space-sm">
+          <div class="flex items-center justify-between gap-space-sm p-space-xs rounded bg-surface-container">
+            <div class="flex items-center gap-space-sm min-w-0"><span class="material-symbols-outlined text-primary text-[18px]" aria-hidden="true">lan</span><div class="flex flex-col min-w-0"><span class="font-label-md text-label-md text-on-surface font-semibold">Conexión con el cerebro</span><span class="font-data-mono text-data-mono text-outline truncate">WebSocket /ws/gafas</span></div></div>
+            <button id="tConexion" type="button" class="interruptor px-space-sm py-1 rounded font-data-mono text-data-mono font-bold">—</button>
+          </div>
+          <div class="flex items-center justify-between gap-space-sm p-space-xs rounded bg-surface-container">
+            <div class="flex items-center gap-space-sm min-w-0"><span class="material-symbols-outlined text-primary text-[18px]" aria-hidden="true">videocam</span><div class="flex flex-col min-w-0"><span class="font-label-md text-label-md text-on-surface font-semibold">Cámara</span><span id="tCamaraDetalle" class="font-data-mono text-data-mono text-outline truncate">la de esta computadora</span></div></div>
+            <button id="tCamara" type="button" class="interruptor off px-space-sm py-1 rounded font-data-mono text-data-mono font-bold">OFF</button>
+          </div>
+          <div class="flex items-center justify-between gap-space-sm p-space-xs rounded bg-surface-container">
+            <div class="flex items-center gap-space-sm min-w-0"><span class="material-symbols-outlined text-primary text-[18px]" aria-hidden="true">mic</span><div class="flex flex-col min-w-0"><span class="font-label-md text-label-md text-on-surface font-semibold">Micrófono</span><span id="tMicDetalle" class="font-data-mono text-data-mono text-outline truncate">—</span></div></div>
+            <button id="tMic" type="button" class="interruptor off px-space-sm py-1 rounded font-data-mono text-data-mono font-bold">OFF</button>
+          </div>
+          <div class="flex flex-col gap-space-xs p-space-xs rounded bg-surface-container">
+            <div class="flex items-center justify-between gap-space-sm">
+              <div class="flex items-center gap-space-sm min-w-0"><span class="material-symbols-outlined text-primary text-[18px]" aria-hidden="true">straighten</span><div class="flex flex-col min-w-0"><span class="font-label-md text-label-md text-on-surface font-semibold">Sensor de distancia</span><span class="font-data-mono text-data-mono text-outline truncate">simulado (el VL53L1X de las gafas)</span></div></div>
+              <button id="tSensor" type="button" class="interruptor off px-space-sm py-1 rounded font-data-mono text-data-mono font-bold">OFF</button>
+            </div>
+            <div class="flex items-center gap-space-sm"><input id="sensorMm" type="range" min="200" max="4000" step="50" value="600" class="w-full accent-[#0ea5e9]" aria-label="Distancia simulada"/><span id="sensorTexto" class="font-data-mono text-data-mono text-secondary w-14 text-right">60 cm</span></div>
+          </div>
+          <div class="grid grid-cols-2 gap-space-xs font-data-mono text-data-mono">
+            <div class="p-space-xs rounded bg-surface-container flex flex-col"><span class="text-outline text-[10px] uppercase">Detector</span><span id="detector" class="text-on-surface">—</span></div>
+            <div class="p-space-xs rounded bg-surface-container flex flex-col"><span class="text-outline text-[10px] uppercase">LLM (se cambia en .env)</span><span id="llm" class="text-on-surface">—</span></div>
+          </div>
+        </div>
+      </section>
+
+      <section class="bg-surface-container-lowest rounded-lg p-space-md flex flex-col gap-space-md">
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-space-sm"><span class="w-6 h-6 rounded bg-primary/20 flex items-center justify-center text-primary"><span class="material-symbols-outlined text-[16px]" aria-hidden="true">psychology</span></span><h2 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Conversación con MIIA</h2></div>
+          <span id="insigniaVoz" class="font-data-mono text-[10px] px-1.5 py-0.5 rounded bg-surface-container text-outline">—</span>
+        </div>
+        <div id="charla" class="h-56 overflow-y-auto bg-surface-dim rounded p-space-sm flex flex-col gap-space-xs font-body-sm text-body-sm" aria-live="polite">
+          <p class="text-outline">Hablale con el micrófono o escribile. Por ejemplo: «¿qué tengo delante?», «¿dónde dejé el celular?», «leeme esto», «cómo cambio las pilas del control».</p>
+        </div>
+        <form id="fTexto" class="flex items-center gap-space-xs">
+          <input id="texto" maxlength="500" class="flex-1 min-w-0 h-8 bg-surface-dim rounded px-space-sm font-body-md text-body-md text-on-surface placeholder:text-outline-variant focus:outline-none focus:bg-surface-container" placeholder="escribirle a MIIA" aria-label="Mensaje para MIIA"/>
+          <button id="enviar" type="submit" class="h-8 px-space-sm rounded bg-primary-container text-on-primary font-label-sm text-label-sm font-semibold">ENVIAR</button>
+        </form>
+      </section>
+
+      <section class="bg-surface-container-lowest rounded-lg p-space-md flex flex-col gap-space-sm">
+        <div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-secondary text-[18px]" aria-hidden="true">apps</span><h2 class="font-headline-sm text-headline-sm text-on-surface font-semibold">Más funciones</h2></div>
+        <form id="fDonde" class="flex items-center gap-space-xs">
+          <input id="donde" class="flex-1 min-w-0 h-8 bg-surface-dim rounded px-space-sm text-on-surface placeholder:text-outline-variant focus:outline-none" placeholder="¿dónde dejé…? (llaves, celular)" aria-label="Qué objeto buscás"/>
+          <button type="submit" class="h-8 px-space-sm rounded bg-surface-container-high text-on-surface font-label-sm text-label-sm">Buscar</button>
+        </form>
+        <form id="fLugar" class="flex items-center gap-space-xs">
+          <input id="lugar" class="flex-1 min-w-0 h-8 bg-surface-dim rounded px-space-sm text-on-surface placeholder:text-outline-variant focus:outline-none" placeholder="estoy en… (cocina, taller)" aria-label="Dónde estás"/>
+          <button type="submit" class="h-8 px-space-sm rounded bg-surface-container-high text-on-surface font-label-sm text-label-sm">Marcar lugar</button>
+        </form>
+        <div class="flex items-center gap-space-xs">
+          <select id="guiaLocal" class="flex-1 min-w-0 h-8 bg-surface-dim rounded px-space-sm text-on-surface" aria-label="Guías guardadas"><option value="">guías guardadas…</option></select>
+          <button id="cargarGuia" type="button" class="h-8 px-space-sm rounded bg-surface-container-high text-on-surface font-label-sm text-label-sm">Cargar guía</button>
+        </div>
+        <div class="flex items-center gap-space-xs flex-wrap">
+          <span class="font-label-sm text-label-sm text-outline uppercase">Prueba real:</span>
+          <button id="acerto" type="button" class="h-8 px-space-sm rounded bg-tertiary/15 text-tertiary font-label-sm text-label-sm">✓ Acertó</button>
+          <input id="real" class="flex-1 min-w-[8rem] h-8 bg-surface-dim rounded px-space-sm text-on-surface placeholder:text-outline-variant focus:outline-none" placeholder="si no, ¿qué era?" aria-label="Qué era en realidad"/>
+          <button id="fallo" type="button" class="h-8 px-space-sm rounded bg-error-container/20 text-error font-label-sm text-label-sm">✗ Se equivocó</button>
+        </div>
+      </section>
+    </div>
+  </div>
+</div>
+</main>
+
+<script src="shell.js"></script>
+<script src="cliente_gafas.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const cliente = new ClienteGafas();
+let salud = {}, ultimasCajas = {}, ultimoMirado = null, ultimoTitulo = null, autoscroll = true;
+
+// ── Registro de eventos ─────────────────────────────────────────────────────
+const COLORES = { SISTEMA: 'text-tertiary', CEREBRO: 'text-secondary', MIRADA: 'text-primary', HUD: 'text-primary-fixed', VOZ: 'text-secondary-fixed', AVISO: 'text-error', ALERTA: 'text-error' };
+function anotar(etiqueta, texto) {
+  const r = $('registro'), hora = new Date().toLocaleTimeString('es-AR', { hour12: false }) + '.' + String(new Date().getMilliseconds()).padStart(3, '0');
+  const fila = document.createElement('div');
+  fila.className = 'flex items-start gap-2 text-on-surface-variant';
+  for (const [clase, t] of [['text-outline shrink-0', `[${hora}]`], [`${COLORES[etiqueta] ?? 'text-outline'} shrink-0`, `[${etiqueta}]`], ['min-w-0 break-words', texto]]) {
+    const s = document.createElement('span'); s.className = clase; s.textContent = t; fila.append(s);
+  }
+  r.append(fila);
+  while (r.children.length > 300) r.firstChild.remove();
+  if (autoscroll) r.scrollTop = r.scrollHeight;
+}
+$('limpiarRegistro').onclick = () => { $('registro').replaceChildren(); anotar('SISTEMA', 'registro limpiado'); };
+$('autoscroll').onclick = () => { autoscroll = !autoscroll; $('autoscroll').textContent = `AUTOSCROLL: ${autoscroll ? 'ON' : 'OFF'}`; $('autoscroll').classList.toggle('text-tertiary', autoscroll); };
+
+// ── La conversación ─────────────────────────────────────────────────────────
+let ultimoHablante = null;
+function decirEnCharla(quien, texto) {
+  const c = $('charla');
+  if (c.firstElementChild?.tagName === 'P' && c.children.length === 1 && !c.dataset.empezo) { c.replaceChildren(); c.dataset.empezo = '1'; }
+  // Gemini manda lo que dice de a pedazos: se pegan al mismo renglón.
+  if (ultimoHablante?.quien === quien && quien === 'miia') { ultimoHablante.nodo.lastChild.textContent += texto; }
+  else {
+    const fila = document.createElement('div');
+    fila.className = `rounded px-space-sm py-space-xs ${quien === 'yo' ? 'bg-surface-container self-end text-on-surface' : 'bg-primary/10 text-on-surface'}`;
+    const quienEs = document.createElement('span'); quienEs.className = `font-label-sm text-label-sm mr-1 ${quien === 'yo' ? 'text-outline' : 'text-primary'}`; quienEs.textContent = quien === 'yo' ? 'vos:' : 'MIIA:';
+    const t = document.createElement('span'); t.textContent = texto;
+    fila.append(quienEs, t);
+    c.append(fila);
+    ultimoHablante = { quien, nodo: fila };
+  }
+  c.scrollTop = c.scrollHeight;
+}
+
+// ── El estado, en una frase ─────────────────────────────────────────────────
+function pintarEstado() {
+  const conectado = cliente.conectado, cam = Boolean(cliente.cam);
+  let icono, color, titulo, chip, texto;
+  if (!conectado) [icono, color, titulo, chip, texto] = ['sync_problem', 'text-error', 'Sin conexión con el cerebro', 'DESCONECTADO', 'Prendé «Conexión con el cerebro». Si no conecta, fijate que esté corriendo «npm start».'];
+  else if (!cam) [icono, color, titulo, chip, texto] = ['videocam_off', 'text-secondary', 'Conectado, con la cámara apagada', 'SIN CÁMARA', 'El cerebro está listo. Prendé la cámara para que las gafas vean.'];
+  else [icono, color, titulo, chip, texto] = ['check_circle', 'text-tertiary', 'Las gafas están viendo', 'EN VIVO', `${salud.detector ? 'El detector y las redes propias' : 'Las redes propias'} miran lo que está en el centro. La pantalla de las gafas está arriba a la derecha de la imagen.`];
+  $('bannerIcono').className = `material-symbols-outlined ${color} text-[20px]`;
+  $('bannerIcono').textContent = icono;
+  $('bannerTitulo').textContent = titulo;
+  $('bannerChip').textContent = chip;
+  $('bannerChip').className = `font-data-mono text-data-mono px-2 py-0.5 rounded uppercase ${conectado && cam ? 'bg-tertiary/10 text-tertiary' : conectado ? 'bg-secondary/10 text-secondary' : 'bg-error/20 text-error'}`;
+  $('bannerTexto').textContent = texto;
+  $('insignia').textContent = chip;
+  $('banner').className = `rounded-lg p-space-md flex flex-col gap-space-xs ${conectado ? 'bg-surface-container-high' : 'bg-error-container/20'}`;
+  // Los interruptores y los botones que necesitan algo.
+  const marcar = (id, on, textoOn, textoOff) => { const b = $(id); b.textContent = on ? textoOn : textoOff; b.classList.toggle('on', on); b.classList.toggle('off', !on); };
+  marcar('tConexion', conectado, 'CONECTADO', 'DESCONECTADO');
+  marcar('tCamara', cam, 'ACTIVA', 'OFF');
+  marcar('tMic', Boolean(cliente.mic), 'ACTIVO', 'OFF');
+  marcar('tSensor', Boolean(cliente.sensor), 'ACTIVO', 'OFF');
+  $('tMic').disabled = !conectado || !cliente.vozLista;
+  $('tMicDetalle').textContent = !cliente.vozLista ? 'la voz está apagada (falta la clave del LLM)' : cliente.modoVoz === 'texto' ? 'el navegador transcribe (DeepSeek)' : 'audio directo al LLM (Gemini Live)';
+  for (const id of ['identificar', 'escena', 'leer', 'guardarTarjeta', 'anterior', 'siguiente', 'cargarGuia', 'acerto', 'fallo', 'tSensor']) $(id).disabled = !conectado;
+  $('texto').disabled = $('enviar').disabled = !conectado || !cliente.vozLista;
+  $('texto').placeholder = !conectado ? 'sin conexión con el cerebro' : cliente.vozLista ? 'escribirle a MIIA' : 'la voz está apagada';
+  $('sinCamara').classList.toggle('hidden', cam);
+  $('pipCam').className = `w-2 h-2 rounded-full ${cam ? 'bg-tertiary animate-pulse' : 'bg-outline-variant'}`;
+  $('vivo').innerHTML = cam ? '<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>LIVE' : '<span class="w-1.5 h-1.5 rounded-full bg-outline"></span>OFF';
+  $('vivo').className = `${cam ? 'text-tertiary' : 'text-outline'} flex items-center gap-1`;
+}
+
+// ── Lo que llega del cerebro ────────────────────────────────────────────────
+cliente.on('conexion', ({ estado, motivo }) => {
+  App.enlace({ estado, texto: estado === 'conectado' ? 'Gafas conectadas' : estado === 'conectando' ? 'Conectando…' : 'Gafas desconectadas', detalle: 'esta página hace de gafas' });
+  anotar('SISTEMA', estado === 'conectado' ? 'conectado al cerebro' : estado === 'conectando' ? 'conectando al cerebro…' : `desconectado${motivo ? `: ${motivo}` : ''}`);
+  if (estado === 'desconectado' && motivo) App.avisar(motivo, 'error');
+  if (estado === 'conectado') cargarGuias();
+  pintarEstado();
+});
+cliente.on('quien', ({ usuario, anteojos }) => {
+  $('quien').textContent = usuario ? `CUENTA: ${usuario} · ANTEOJOS: ${anteojos ?? 'Emulador'}` : 'SIN CUENTA';
+  anotar('CEREBRO', usuario ? `sesión de ${usuario} (${anteojos ?? 'Emulador'}): usa lo que le enseñaste` : 'sesión sin cuenta');
+});
+cliente.on('estado', (m) => {
+  const nombres = { sin_clave: 'APAGADA', conectando: 'CONECTANDO', lista: 'LISTA', cerrada: 'CERRADA', error: 'ERROR' };
+  $('voz').textContent = nombres[m.voz] ?? m.voz;
+  $('insigniaVoz').textContent = m.voz === 'lista' ? (cliente.modoVoz === 'texto' ? 'VOZ: POR ESCRITO' : 'VOZ: EN VIVO') : `VOZ: ${nombres[m.voz] ?? m.voz}`;
+  $('insigniaVoz').className = `font-data-mono text-[10px] px-1.5 py-0.5 rounded ${m.voz === 'lista' ? 'bg-tertiary/10 text-tertiary' : 'bg-surface-container text-outline'}`;
+  anotar('VOZ', `voz: ${nombres[m.voz] ?? m.voz}${m.detalle ? ` — ${m.detalle}` : ''}`);
+  if (m.voz === 'error' || m.voz === 'cerrada') App.avisar(`La voz se cortó${m.detalle ? `: ${m.detalle}` : ''}. Desconectá y volvé a conectar.`, 'error');
+  pintarEstado();
+});
+const tarjetaHud = montarTarjetaHud($('tarjetaHud'));
+cliente.on('hud', (m) => {
+  tarjetaHud.pintar(m);
+  dibujarHud($('hud'), m);
+  if (m.titulo !== ultimoTitulo) { ultimoTitulo = m.titulo; anotar('HUD', [m.titulo, ...(m.lineas ?? [])].filter(Boolean).join(' · ')); }
+});
+cliente.on('cajas', (m) => {
+  ultimasCajas = m;
+  dibujarCajas($('cajas'), m, opcionesDeDibujo());
+  const nombre = m.mirado ? `${conMayuscula(m.mirado.nombre)} · ${m.mirado.confianza}%${m.mirado.metros !== undefined ? ` · ${String(m.mirado.metros).replace('.', ',')} m` : ''}` : '—';
+  $('mirando').textContent = nombre;
+  if ((m.mirado?.nombre ?? null) !== ultimoMirado) { ultimoMirado = m.mirado?.nombre ?? null; anotar('MIRADA', m.mirado ? `mirando: ${nombre}` : 'nada en la mirada'); }
+});
+cliente.on('aviso', (m) => { App.avisar(m.texto); anotar('AVISO', m.texto); });
+cliente.on('dicho', (m) => decirEnCharla(m.quien, m.texto));
+cliente.on('decir', (m) => { ultimoHablante = null; decirEnCharla('miia', m.texto); });
+cliente.on('alerta', (m) => {
+  anotar('ALERTA', m.tipo === 'animal' ? `¡cuidado! ${m.objeto}: peligro ${m.peligro}` : `¡cuidado! ${m.objeto} llega en ≈ ${m.llegada_s} s`);
+  $('vista').classList.remove('alerta'); void $('vista').offsetWidth; $('vista').classList.add('alerta');
+});
+cliente.on('camara', (on) => { $('nombreCam').textContent = on ? cliente.cam.nombre : 'sin cámara'; $('resCam').textContent = on ? `${cliente.cam.ancho}×${cliente.cam.alto} · 2 cuadros/s` : '2 cuadros/s'; $('tCamaraDetalle').textContent = on ? cliente.cam.nombre : 'la de esta computadora'; if (!on) dibujarCajas($('cajas'), {}); anotar('SISTEMA', on ? `cámara prendida (${cliente.cam.nombre})` : 'cámara apagada'); pintarEstado(); });
+cliente.on('mic', (on) => { anotar('VOZ', on ? 'micrófono prendido: hablale a MIIA' : 'micrófono apagado'); pintarEstado(); });
+cliente.on('enviados', (n) => { $('cps').textContent = n; });
+
+// ── Botones ─────────────────────────────────────────────────────────────────
+const intentar = async (fn) => { try { await fn(); } catch (e) { App.avisar(e.message, 'error'); anotar('AVISO', e.message); } finally { pintarEstado(); } };
+$('tConexion').onclick = () => (cliente.conectado ? cliente.desconectar() : cliente.conectar());
+$('tCamara').onclick = () => intentar(() => (cliente.cam ? cliente.apagarCamara() : cliente.prenderCamara($('video'))));
+$('prender').onclick = () => intentar(() => cliente.prenderCamara($('video')));
+$('tMic').onclick = () => intentar(() => (cliente.mic ? cliente.apagarMic() : cliente.prenderMic()));
+$('tSensor').onclick = () => { cliente.sensorDistancia(cliente.sensor ? 0 : Number($('sensorMm').value)); anotar('SISTEMA', cliente.sensor ? 'sensor de distancia simulado: prendido. Con un objeto al centro, la pantalla dice cuánto mide.' : 'sensor de distancia: apagado'); pintarEstado(); };
+$('sensorMm').oninput = () => { $('sensorTexto').textContent = `${Math.round($('sensorMm').value / 10)} cm`; if (cliente.sensor) cliente.mmSensor = Number($('sensorMm').value); };
+const opcionesDeDibujo = () => ({ verTodo: $('verTodo').checked, verEscena: $('verEscena').checked });
+// Tocar un recuadro equivocado: «esto no es una persona» (src/correcciones.js).
+$('cajas').onclick = (e) => {
+  const c = $('cajas'), x = e.offsetX * c.width / c.clientWidth, y = e.offsetY * c.height / c.clientHeight;
+  const cajas = [...(ultimasCajas.lista ?? []).filter(b => !b.corregido), ...(ultimasCajas.escena?.objetos ?? []).map(o => ({ ...o, nombre: o.nombre.replace(/ \d+$/, '') })),
+                 ...(ultimasCajas.mirado ? [ultimasCajas.mirado] : [])];
+  const tocada = cajas.filter(b => x >= b.x0 && x <= b.x0 + b.ancho && y >= b.y0 && y <= b.y0 + b.alto).sort((a, b) => a.ancho * a.alto - b.ancho * b.alto)[0];
+  if (!tocada) return App.avisar('Ahí no hay ningún recuadro. Tildá «Ver lo descartado» para ver todo lo que marcó el detector.');
+  const nombre = tocada.nombre;
+  if (!confirm(`¿Eso NO es «${nombre}»? Las gafas van a recordar cómo se ve, y no lo van a marcar más.`)) return;
+  cliente.enviarJson({ t: 'corregir', nombre, caja: { x0: tocada.x0, y0: tocada.y0, ancho: tocada.ancho, alto: tocada.alto } });
+  anotar('SISTEMA', `corrección: eso no es «${nombre}»`);
+};
+$('olvidarCorrecciones').onclick = () => { if (confirm('¿Olvidar todo lo que le corregiste al detector?')) cliente.enviarJson({ t: 'olvidar_correcciones' }); };
+$('verTodo').onchange = $('verEscena').onchange = () => dibujarCajas($('cajas'), ultimasCajas, opcionesDeDibujo());
+$('escena').onclick = () => { if (!cliente.cam) return App.avisar('Prendé la cámara.'); cliente.enviarJson({ t: 'escena' }); anotar('SISTEMA', 'escena: todo lo que se ve a la vez'); };
+$('verOled').onchange = () => { $('hud').classList.toggle('hidden', !$('verOled').checked); $('tarjetaHud').classList.toggle('hidden', $('verOled').checked); };
+$('identificar').onclick = () => { if (!cliente.cam) return App.avisar('Prendé la cámara y poné el aparato, la pieza o el animal en el centro.'); cliente.enviarJson({ t: 'identificar' }); anotar('SISTEMA', 'consultando qué es (aparato, pieza o animal)…'); };
+$('leer').onclick = () => {
+  if (!cliente.cam) return App.avisar('Prendé la cámara y apuntá al texto.');
+  const traducir_a = $('traducir').value;
+  cliente.enviarJson({ t: 'leer', ...(traducir_a ? { traducir_a } : {}) });
+  anotar('SISTEMA', traducir_a ? `leyendo y traduciendo al ${traducir_a}…` : 'leyendo el texto…');
+};
+$('guardarTarjeta').onclick = () => cliente.enviarJson({ t: 'guardar_tarjeta' });
+$('anterior').onclick = () => cliente.enviarJson({ t: 'paso', hacia: -1 });
+$('siguiente').onclick = () => cliente.enviarJson({ t: 'paso', hacia: 1 });
+$('fTexto').onsubmit = (e) => {
+  e.preventDefault();
+  const texto = $('texto').value.trim();
+  if (!texto) return;
+  cliente.enviarJson({ t: 'texto', texto });
+  ultimoHablante = null; decirEnCharla('yo', texto); ultimoHablante = null;
+  $('texto').value = '';
+};
+$('fDonde').onsubmit = (e) => { e.preventDefault(); const n = $('donde').value.trim(); if (!n) return App.avisar('Escribí qué objeto buscás.'); cliente.enviarJson({ t: 'donde', nombre: n }); };
+$('fLugar').onsubmit = (e) => { e.preventDefault(); const n = $('lugar').value.trim(); cliente.enviarJson({ t: 'lugar', nombre: n }); anotar('SISTEMA', n ? `lugar: ${n}` : 'lugar borrado'); };
+$('cargarGuia').onclick = () => { const id = $('guiaLocal').value; if (!id) return App.avisar('Elegí una guía de la lista.'); cliente.enviarJson({ t: 'guia_local', consulta: id }); anotar('SISTEMA', `guía cargada: ${$('guiaLocal').selectedOptions[0].textContent}`); };
+$('acerto').onclick = () => cliente.enviarJson({ t: 'evaluar', acierto: true });
+$('fallo').onclick = () => { const real = $('real').value.trim(); if (!real) { App.avisar('Escribí qué era en realidad, así la prueba sirve.'); return $('real').focus(); } cliente.enviarJson({ t: 'evaluar', acierto: false, real }); $('real').value = ''; };
+
+async function cargarGuias() {
+  try {
+    const guias = await (await fetch('/guias')).json();
+    const sel = $('guiaLocal'); sel.length = 1;
+    const grupos = new Map();
+    for (const g of guias) {
+      if (!grupos.has(g.tema)) { const og = document.createElement('optgroup'); og.label = g.tema.replace(/_/g, ' ') || 'otras'; grupos.set(g.tema, og); sel.append(og); }
+      grupos.get(g.tema).append(new Option(g.titulo, g.id));
+    }
+  } catch { /* sin lista: la guía se pide igual por voz */ }
+}
+
+// ── Arranque ────────────────────────────────────────────────────────────────
+dibujarHud($('hud'), { titulo: 'MIIA gafas', lineas: ['Conectando...'], pie: '' });
+tarjetaHud.pintar({ titulo: 'MIIA gafas', lineas: ['Conectando…'] });
+pintarEstado();
+App.montar('vision').then(({ salud: s }) => {
+  salud = s;
+  $('red').textContent = s.red_general ? `${s.red_general.clases} clases` : 'sin red general';
+  $('base').textContent = s.base ? 'MySQL' : 'apagada';
+  $('detector').textContent = s.detector ? 'YOLOS-tiny · activo' : 'no instalado';
+  $('llm').textContent = s.llm === 'gemini' ? 'Gemini Live' : s.llm === 'deepseek' ? 'DeepSeek (por escrito)' : 'apagado';
+  cliente.conectar();
+}).catch((e) => App.avisar(e.message, 'error'));
+</script>
+</body>
+</html>

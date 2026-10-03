@@ -29,3 +29,6 @@ guias/myfixit/
 
 # ── La configuración del firmware (clave del WiFi y token) ─
 firmware/gafas_xiao/config.h
+
+# ── Zips de bases bajadas (ej. el de Kaggle: se descomprime en datos/) ──
+/*.zip

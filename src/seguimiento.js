@@ -14,13 +14,16 @@
 //     el recuadro temblando, es una estimación gruesa: sirve para «viene rápido».
 //     Sólo es la componente hacia la cámara; lo que cruza de costado no cuenta.
 
-import { ALTO_TIPICO_M, distanciaPorAltoM, focalDesdeFovDiagonal, tiempoDeLlegadaS } from './medir.js';
+import { ALTO_TIPICO_M, LARGO_TIPICO_M, distanciaPorAltoM, focalDesdeFovDiagonal, tiempoDeLlegadaS } from './medir.js';
 import { CLASE_NADA } from './red_objetos.js';
 
 const PERSONA = 'persona';
 // Cuánto creerle al detector, medido con herramientas/medir_confianza.js sobre 400
 // fotos de validación de COCO (2-oct-2026): de lo que marca con confianza de 0,5 a
-// 0,9 es cierto menos de 4 de cada 10; de 0,9 para arriba, 77 %. Y el objeto que
+// 0,9 es cierto menos de 4 de cada 10; de 0,9 para arriba, 77 %. Sólo «persona», en
+// 600 fotos (3-oct-2026): de 0,5 a 0,9, entre 19 % y 40 % (ropa colgada, sombras,
+// estatuas); de 0,9 para arriba, 83 %. Por eso la ropa del placar marcada «persona
+// 0,62» o «0,76» no cuenta, aunque se vea con «Ver todo el detector». Y el objeto que
 // elige principalDe(), uno por foto: con 0,6 opina en 376 fotos y acierta en 276;
 // con 0,9 opina en 335 y acierta en 305. Más exigente acierta MÁS, no sólo se calla
 // más: con el umbral viejo (0,6) una cosa dudosa le sacaba el lugar a una cierta.
@@ -36,6 +39,10 @@ const area = (c) => c.ancho * c.alto;
 const seTocan = (a, b) => a.x0 <= b.x0 + b.ancho && b.x0 <= a.x0 + a.ancho && a.y0 <= b.y0 + b.alto && b.y0 <= a.y0 + a.alto;
 // A cuántos píxeles del punto queda el recuadro: 0 si lo contiene.
 const distancia = (c, p) => Math.hypot(Math.max(c.x0 - p.x, 0, p.x - c.x0 - c.ancho), Math.max(c.y0 - p.y, 0, p.y - c.y0 - c.alto));
+
+// ¿El recuadro toca el círculo de la mirada?
+export const tocaLaMirada = (caja, anchoImg, altoImg, radio = RADIO_DE_MIRADA) =>
+  distancia(caja, { x: anchoImg / 2, y: altoImg / 2 }) <= radio * Math.min(anchoImg, altoImg);
 
 // El objeto al que se le está prestando atención: UNO, y sólo si está en la mirada.
 // La regla, en orden:
@@ -137,6 +144,8 @@ export class Seguimiento {
   // puede medir (no hay alto típico, está cortado por el borde, o no se ve entero).
   // velocidadKmh es null mientras no haya muestras suficientes, y 0 si está quieto.
   agregar(objeto, anchoImg, altoImg, tMs) {
+    if (objeto && ALTO_TIPICO_M[objeto.nombre] === undefined && LARGO_TIPICO_M[objeto.nombre] !== undefined)
+      return this._cosaChica(objeto, anchoImg, altoImg);
     if (!objeto || ALTO_TIPICO_M[objeto.nombre] === undefined) { this.reiniciar(); return null; }
     const { caja } = objeto;
     const borde = Math.max(BORDE_PX, BORDE_FRACCION * altoImg);
@@ -172,13 +181,28 @@ export class Seguimiento {
     return { distanciaM, velocidadKmh, llegadaS };
   }
 
+  // Una cosa de tamaño parejo (un celular, una taza, 3-oct-2026): sólo la distancia,
+  // sin velocidad (la mano que la mueve no es un auto que llega). Por el lado más largo,
+  // y sólo si no la corta ningún borde. Las tres últimas lecturas, promediadas.
+  _cosaChica(objeto, anchoImg, altoImg) {
+    const { caja } = objeto, bx = Math.max(BORDE_PX, BORDE_FRACCION * anchoImg), by = Math.max(BORDE_PX, BORDE_FRACCION * altoImg);
+    if (caja.x0 <= bx || caja.y0 <= by || caja.x0 + caja.ancho >= anchoImg - bx || caja.y0 + caja.alto >= altoImg - by) return null;
+    const focal = focalDesdeFovDiagonal(anchoImg, altoImg, this.fov);
+    const d = LARGO_TIPICO_M[objeto.nombre] * focal / Math.max(caja.ancho, caja.alto);
+    if (objeto.nombre !== this.nombre) { this.nombre = objeto.nombre; this.muestras = []; }
+    this.muestras.push({ t: 0, d });
+    if (this.muestras.length > 3) this.muestras.shift();
+    return { distanciaM: this.muestras.reduce((s, m) => s + m.d, 0) / this.muestras.length, velocidadKmh: null, llegadaS: null };
+  }
+
   reiniciar() { this.nombre = null; this.muestras = []; }
 }
 
 // Los metros que se muestran: de a medio metro hasta los 10 m y de a uno después. La
 // cuenta tiene un error de ±15 %, y un número que baila en el último dígito a cada
 // cuadro hace parpadear la pantalla sin decir nada nuevo.
-export const metrosRedondos = (d) => d >= 10 ? Math.round(d) : Math.round(d * 2) / 2;
+// Debajo de 1 m, de a 10 cm: ahí está lo que se tiene en la mano (3-oct-2026).
+export const metrosRedondos = (d) => d >= 10 ? Math.round(d) : d < 1 ? Math.round(d * 10) / 10 : Math.round(d * 2) / 2;
 const PASO_KMH = 5;               // la velocidad, de a 5 km/h, por lo mismo
 
 // Tres renglones de 21 letras para el HUD. «≈» porque nada de esto es exacto.

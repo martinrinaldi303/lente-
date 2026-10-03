@@ -169,7 +169,7 @@ test('marca y modelo con DeepSeek: viaja sólo el recorte, como imagen, y la res
   assert.match(imagen.image_url.url, /^data:image\/jpeg;base64,/);
   const recorte = jpeg.decode(Buffer.from(imagen.image_url.url.split(',')[1], 'base64'), { useTArray: true });
   assert.deepEqual([recorte.width, recorte.height], [144, 144]);             // el recuadro, no el cuadro entero
-  assert.deepEqual(f, { tipo: 'celular', marca: 'X'.repeat(21), modelo: '', seguridad: 'baja', por_que: '', caracteristicas: ['a', 'b'], partes: [] });
+  assert.deepEqual(f, { categoria: 'aparato', tipo: 'celular', marca: 'X'.repeat(21), modelo: '', seguridad: 'baja', por_que: '', caracteristicas: ['a', 'b'], partes: [] });
   assert.ok(!('nombre' in f));                                               // lo que no es de la ficha se tira
   await assert.rejects(identificar(cuadro), /no contestó nada/);             // la salida JSON a veces vuelve vacía
   assert.equal(await identificar(cuadro), null);                             // no vio ningún aparato

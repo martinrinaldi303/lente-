@@ -104,6 +104,15 @@ function dibujarCajas(msg) {
   if (mirado) caja(mirado, '#5fd0ff', 3);
 }
 
+// Con qué cuenta está conectada esta página: la cookie del panel la elige sola. Sin
+// cuenta, las gafas usan lo aprendido «sin cuenta», como antes de que existieran.
+function mostrarQuien({ usuario, anteojos }) {
+  $('cuentaQuien').textContent = usuario ? `${usuario} · ${anteojos ?? 'Emulador'}` : 'Sin cuenta';
+  $('cuentaEnlace').textContent = usuario ? 'Mi cuenta' : 'Entrar o crear cuenta';
+  $('cuentaEnlace').href = usuario ? '/panel.html' : '/cuenta.html';
+  anotar('sis', usuario ? `conectado como ${usuario} (${anteojos ?? 'Emulador'}): usa lo que le enseñaste a esta cuenta` : 'conectado sin cuenta');
+}
+
 function anotar(clase, texto) {
   const r = $('registro');
   // La transcripción llega de a pedazos: se pegan al renglón del mismo hablante.
@@ -182,6 +191,7 @@ function conectar() {
     else if (msg.t === 'dicho') { anotar(msg.quien, msg.texto); if (modoVoz === 'texto' && msg.quien === 'miia') decir(msg.texto); }
     else if (msg.t === 'aviso') avisar(msg.texto);
     else if (msg.t === 'cajas') dibujarCajas(msg);
+    else if (msg.t === 'quien') mostrarQuien(msg);
     else if (msg.t === 'decir') { anotar('miia', msg.texto); ultimoDicho = null; decir(msg.texto); }
     else if (msg.t === 'alerta') alertar(msg);
     else if (msg.t === 'foto') mandarFoto();
@@ -377,7 +387,8 @@ $('prender').onclick = () => pedir($('cam'), 'la cámara', prenderCam);
 function alBinario(bytes) {
   if (bytes[0] !== BIN_AUDIO_BAJA || bytes.length < 3) return;
   parlante ??= new AudioContext({ sampleRate: PARLANTE_HZ });
-  const pcm = new Int16Array(bytes.buffer, 1, (bytes.length - 1) >> 1);
+  // Se copia: un Int16Array no puede empezar en el byte 1 del paquete (tira RangeError).
+  const pcm = new Int16Array(bytes.slice(1, 1 + ((bytes.length - 1) & ~1)).buffer);
   const buffer = parlante.createBuffer(1, pcm.length, PARLANTE_HZ);
   const canal = buffer.getChannelData(0);
   for (let i = 0; i < pcm.length; i++) canal[i] = pcm[i] / 0x8000;
@@ -413,7 +424,7 @@ function callar() {
 // Unas gafas de verdad pitan con un buzzer o vibran: la pantalla sola no alcanza,
 // porque quien está por cruzar no está mirando el HUD.
 function alertar(msg) {
-  anotar('sis', `¡cuidado! ${msg.objeto} llega en ≈ ${msg.llegada_s} s`);
+  anotar('sis', msg.tipo === 'animal' ? `¡cuidado! ${msg.objeto}: peligro ${msg.peligro}` : `¡cuidado! ${msg.objeto} llega en ≈ ${msg.llegada_s} s`);
   $('vista').classList.remove('alerta');
   void $('vista').offsetWidth;                  // para que la animación vuelva a arrancar
   $('vista').classList.add('alerta');
@@ -506,7 +517,7 @@ $('demo').onclick = () => { enviarJson({ t: 'guia', ...GUIA_DE_EJEMPLO }); anota
 $('identificar').onclick = () => {
   if (!camActiva) return avisar('Prendé la cámara y poné el aparato en el recuadro.');
   enviarJson({ t: 'identificar' });
-  anotar('sis', 'consultando marca y modelo del aparato…');
+  anotar('sis', 'consultando qué es (aparato, pieza o animal)…');
 };
 $('guardarTarjeta').onclick = () => enviarJson({ t: 'guardar_tarjeta' });
 

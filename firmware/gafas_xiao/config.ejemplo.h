@@ -12,7 +12,11 @@
 #define CEREBRO_HOST   "192.168.0.10"
 #define CEREBRO_PUERTO 8787
 
-// El mismo TOKEN_GAFAS del .env del cerebro. Letras y números, sin comillas.
+// La llave de ESTOS anteojos. Dos formas:
+//   · la que te da el panel (http://<cerebro>:8787/panel.html → «Vincular anteojos»):
+//     empieza con gaf_ y hace que las gafas entren con TU cuenta y usen lo que vos
+//     les enseñaste. Es lo recomendado.
+//   · el TOKEN_GAFAS del .env del cerebro: entran «sin cuenta».
 #define TOKEN_GAFAS    ""
 
 // 1 si la pantalla se ve reflejada en una lámina o un prisma (sale al revés).

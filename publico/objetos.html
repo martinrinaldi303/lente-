@@ -1,0 +1,80 @@
+<!DOCTYPE html>
+<html class="dark" lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MIIA · Objetos detectados</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap"/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="tw-config.js"></script>
+<style>body { overscroll-behavior: none; font-variant-numeric: tabular-nums; }</style>
+</head>
+<body class="bg-surface font-body-md text-body-md text-on-surface antialiased">
+<main class="pt-14 lg:pl-64 min-h-screen">
+<div class="p-space-lg flex flex-col gap-space-md">
+  <div class="flex flex-col lg:flex-row lg:items-start justify-between gap-space-md">
+    <div class="flex flex-col gap-space-xxs">
+      <span class="font-label-sm text-label-sm text-secondary tracking-widest uppercase">MODULE // MEMORIA DE OBJETOS</span>
+      <h1 class="font-headline-lg text-headline-lg font-semibold text-on-surface tracking-tight">Objetos detectados</h1>
+      <p class="font-body-md text-body-md text-on-surface-variant max-w-3xl">Cada objeto que tus anteojos vieron, la última vez que lo vieron y dónde estabas. Sirve para «¿dónde dejé las llaves?». Nunca personas.</p>
+    </div>
+    <div class="flex items-center gap-space-xs self-start">
+      <div class="flex items-center gap-space-xs px-space-sm py-1 bg-surface-container-high rounded font-data-mono text-label-sm"><span class="text-outline-variant uppercase text-[10px]">LUGAR AHORA:</span><span id="lugar" class="text-secondary font-medium">—</span></div>
+      <button id="vaciar" type="button" class="h-7 px-space-sm rounded bg-error-container/20 hover:bg-error-container/35 text-error font-label-sm text-label-sm flex items-center gap-1"><span class="material-symbols-outlined text-[15px]" aria-hidden="true">delete_sweep</span>Olvidar todo</button>
+    </div>
+  </div>
+
+  <form id="fDonde" class="bg-surface-container-low p-space-md rounded flex flex-wrap items-center gap-space-sm">
+    <span class="material-symbols-outlined text-primary text-[20px]" aria-hidden="true">travel_explore</span>
+    <input id="donde" class="flex-1 min-w-[12rem] h-8 bg-surface-container-lowest px-space-sm rounded text-on-surface placeholder:text-outline-variant focus:outline-none" placeholder="¿dónde dejé…? llaves, celular, control" aria-label="Qué objeto buscás"/>
+    <button type="submit" class="h-8 px-space-md rounded bg-primary-container text-on-primary-container font-label-md text-label-md font-semibold">Buscar</button>
+    <p id="respuesta" class="w-full font-body-md text-body-md text-on-surface" aria-live="polite"></p>
+  </form>
+
+  <section class="bg-surface-container-low rounded p-space-md flex flex-col gap-space-sm">
+    <div class="flex items-center justify-between"><h2 class="font-headline-sm text-headline-sm text-on-surface">Lo último que vieron</h2><span id="cuantos" class="font-data-mono text-data-mono px-1.5 py-0.5 rounded bg-surface-container-high text-outline">—</span></div>
+    <div class="overflow-x-auto">
+      <table class="w-full font-data-mono text-data-mono">
+        <thead><tr class="text-left text-outline uppercase text-[10px] border-b border-surface-container-highest"><th class="py-space-xs pr-space-md">Objeto</th><th class="py-space-xs pr-space-md">Visto</th><th class="py-space-xs pr-space-md">Dónde</th><th class="py-space-xs text-right">Confianza</th></tr></thead>
+        <tbody id="tabla"></tbody>
+      </table>
+    </div>
+    <p class="font-body-sm text-body-sm text-outline">Sólo aparece lo que alguna red conoce. Si querés que encuentre tus llaves, enseñáselas en «Enseñar objeto». El lugar lo marcás vos («estoy en la cocina») o con un QR que diga LUGAR:cocina.</p>
+  </section>
+</div>
+</main>
+<script src="shell.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+async function cargar() {
+  try {
+    const { objetos, lugar } = await App.api('GET', 'objetos');
+    $('lugar').textContent = lugar ?? 'sin marcar';
+    $('cuantos').textContent = `${objetos.length} objeto${objetos.length === 1 ? '' : 's'}`;
+    const celda = (t, c = 'py-space-xs pr-space-md') => Object.assign(document.createElement('td'), { className: c, textContent: t });
+    $('tabla').replaceChildren(...(objetos.length ? objetos.map(o => {
+      const tr = document.createElement('tr'); tr.className = 'border-b border-surface-container';
+      tr.append(celda(o.objeto, 'py-space-xs pr-space-md text-on-surface capitalize'), celda(o.hace, 'py-space-xs pr-space-md text-on-surface-variant'),
+                celda(o.lugar ?? '—', 'py-space-xs pr-space-md text-secondary'), celda(o.confianza !== undefined ? `${Math.round(o.confianza * 100)}%` : '—', 'py-space-xs text-right text-tertiary'));
+      return tr;
+    }) : [Object.assign(document.createElement('tr'), { innerHTML: '<td colspan="4" class="py-space-md text-on-surface-variant">Todavía no vio nada. Prendé la cámara en Visión.</td>' })]));
+  } catch (e) { App.avisar(e.message, 'error'); }
+}
+$('fDonde').onsubmit = async (e) => {
+  e.preventDefault();
+  const nombre = $('donde').value.trim();
+  if (!nombre) return App.avisar('Escribí qué buscás.');
+  try { const r = await App.api('GET', `objetos/donde?nombre=${encodeURIComponent(nombre)}`); $('respuesta').textContent = r.visto ? `«${r.objeto}»: ${r.hace}${r.lugar ? `, en ${r.lugar}` : ''}.` : r.motivo; }
+  catch (err) { App.avisar(err.message, 'error'); }
+};
+$('vaciar').onclick = async () => {
+  if (!confirm('¿Olvidar todo lo que tus anteojos vieron? Lo que les enseñaste no se toca.')) return;
+  try { await App.api('DELETE', 'objetos'); App.avisar('Listo: la memoria de objetos quedó vacía', 'ok'); cargar(); } catch (e) { App.avisar(e.message, 'error'); }
+};
+App.montar('objetos', { subtitulo: 'Objetos detectados' }).then(() => { cargar(); setInterval(() => { if (!document.hidden) cargar(); }, 10000); }).catch((e) => App.avisar(e.message, 'error'));
+</script>
+</body>
+</html>

@@ -23,6 +23,7 @@
 // se le agrega nada: la prueba son fotos, no fotos inventadas.
 
 import jpeg from 'jpeg-js';
+import { createHash } from 'node:crypto';
 import { mkdirSync, readdirSync, readFileSync, statSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -40,6 +41,13 @@ function fnv1a(s) {
 
 export function vaAPrueba(nombreArchivo) {
   return fnv1a(nombreArchivo.toLowerCase()) % UNA_DE_CADA_N_A_PRUEBA === 0;
+}
+
+// Dos fotos con los mismos vectores en todos los extractores son la misma foto.
+function claveDeFoto(vectores) {
+  const h = createHash('sha1');
+  for (const v of vectores) h.update(Buffer.from(Float32Array.from(v).buffer));
+  return h.digest('hex');
 }
 
 // Devuelve el resumen. `maxPorCarpeta` acota las clases gigantes para que una sola
@@ -73,6 +81,7 @@ export async function exportar({ base, categorias, salida, maxPorCarpeta = Infin
       return c.fuente === e.fuente && c.dim === e.dim ? c.filas : null;
     } catch { return null; }
   };
+  const fotos = [];
 
   for (const { carpeta, clase, archivos } of listado) {
     if (!archivos.length) continue;
@@ -103,11 +112,33 @@ export async function exportar({ base, categorias, salida, maxPorCarpeta = Infin
     if (porExtractor.some(f => f.length !== porExtractor[0].length))
       throw new Error(`el cache de ${carpeta} quedó desparejo entre extractores: borrá ${dirCache}`);
 
-    porExtractor.forEach((filasDeCarpeta, k) => {
-      for (const f of filasDeCarpeta) filas[k][LADOS[f.etiqueta]].push({ etiqueta, vector: f.vector });
-    });
-    for (const f of porExtractor[0]) resumen.porClase[clase][LADOS[f.etiqueta]]++;
+    // De a una foto: con espejo, una de entrenamiento son dos filas seguidas.
+    for (let k = 0; k < porExtractor[0].length;) {
+      const n = espejo && porExtractor[0][k].etiqueta === 0 ? 2 : 1;
+      fotos.push({ clase, etiqueta, lado: LADOS[porExtractor[0][k].etiqueta], filas: porExtractor.map(f => f.slice(k, k + n)),
+                   clave: claveDeFoto(porExtractor.map(f => f[k].vector)) });
+      k += n;
+    }
     registrar(`${carpeta} → ${clase}: ${porExtractor[0].length} filas${faltan.length ? '' : ' (ya calculadas)'}`);
+  }
+
+  // Fotos repetidas, byte por byte (dan los mismos vectores). La base de piezas de PC
+  // de Kaggle trae 203: la misma foto de un teclado con su mouse está en «keyboard» y en
+  // «mouse», y una con el teclado en «monitor». Si está en dos clases no se sabe cuál
+  // es, y enseñaría las dos cosas a la vez: se saca entera. Si está dos veces en la
+  // misma clase queda la primera, así la copia no cae en la prueba y la infla.
+  const clasesDe = new Map();
+  for (const f of fotos) (clasesDe.get(f.clave) ?? clasesDe.set(f.clave, new Set()).get(f.clave)).add(f.clase);
+  const vistas = new Set();
+  resumen.ambiguas = 0; resumen.repetidas = 0;
+  for (const f of fotos) {
+    if (clasesDe.get(f.clave).size > 1) { resumen.ambiguas++; continue; }
+    if (vistas.has(f.clave)) { resumen.repetidas++; continue; }
+    vistas.add(f.clave);
+    f.filas.forEach((filasDeFoto, k) => {
+      for (const fila of filasDeFoto) filas[k][f.lado].push({ etiqueta: f.etiqueta, vector: fila.vector });
+    });
+    resumen.porClase[f.clase][f.lado] += f.filas[0].length;
   }
 
   extractores.forEach((e, k) => {
@@ -142,6 +173,7 @@ if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const r = await exportar({ base, categorias, salida, maxPorCarpeta, espejo: resto.includes('--espejo'), extractores, registrar: console.log });
   console.log(`\n${r.entrenamiento} de entrenamiento y ${r.prueba} de prueba, en ${r.clases.length} clases`);
   console.log(`Una carpeta por extractor en ${salida}: ${r.fuentes.join(', ')}`);
+  if (r.ambiguas || r.repetidas) console.log(`Fotos repetidas sacadas: ${r.ambiguas} en más de una clase, ${r.repetidas} copias en la misma`);
   if (r.saltadas) console.log(`⚠️ ${r.saltadas} imágenes no se pudieron leer y se saltaron`);
   if (r.carpetasFaltantes.length) console.log(`⚠️ carpetas que no existen: ${r.carpetasFaltantes.join(', ')}`);
 }

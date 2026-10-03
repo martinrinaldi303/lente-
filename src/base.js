@@ -19,6 +19,29 @@ import { encolarAcotado } from './cola_acotada.js';
 
 const ESQUEMA = join(dirname(dirname(fileURLToPath(import.meta.url))), 'docs', 'esquema_gafas.sql');
 const TOPE_COLA = 200;
+export const SIN_CUENTA = 0;      // el dueño de lo que no tiene cuenta (ver src/cuentas.js)
+
+// Lo que le falta a una base creada antes de las cuentas (2-oct-2026). Cada paso se
+// hace sólo si hace falta, así que correrlo dos veces no cambia nada. Lo que había
+// queda con usuario_id 0: «sin cuenta». Está acá y no en el .sql porque MySQL 8 no
+// entiende «ADD COLUMN IF NOT EXISTS».
+const MIGRACIONES = [
+  // Entrar con Google (3-oct-2026): la contraseña pasa a ser opcional.
+  { tabla: 'usuarios', columna: 'google_sub', sql: 'ALTER TABLE usuarios ADD COLUMN google_sub VARCHAR(64) NULL AFTER clave' },
+  { tabla: 'usuarios', indice: 'uq_usuarios_google', sql: 'ALTER TABLE usuarios ADD UNIQUE KEY uq_usuarios_google (google_sub)' },
+  { tabla: 'usuarios', nula: 'clave', sql: 'ALTER TABLE usuarios MODIFY clave VARCHAR(255) NULL' },
+  { tabla: 'objetos', columna: 'usuario_id', sql: 'ALTER TABLE objetos ADD COLUMN usuario_id INT NOT NULL DEFAULT 0 AFTER id' },
+  { tabla: 'objetos', indice: 'uq_objetos_usuario_nombre', sql: 'ALTER TABLE objetos ADD UNIQUE KEY uq_objetos_usuario_nombre (usuario_id, nombre)' },
+  { tabla: 'objetos', quitar: 'uq_objetos_nombre', sql: 'ALTER TABLE objetos DROP INDEX uq_objetos_nombre' },
+  { tabla: 'tarjetas_qr', columna: 'usuario_id', sql: 'ALTER TABLE tarjetas_qr ADD COLUMN usuario_id INT NOT NULL DEFAULT 0 AFTER id' },
+  { tabla: 'tarjetas_qr', indice: 'uq_tarjetas_usuario_huella', sql: 'ALTER TABLE tarjetas_qr ADD UNIQUE KEY uq_tarjetas_usuario_huella (usuario_id, huella)' },
+  { tabla: 'tarjetas_qr', quitar: 'uq_tarjetas_huella', sql: 'ALTER TABLE tarjetas_qr DROP INDEX uq_tarjetas_huella' },
+  ...['reconocimientos', 'identificaciones', 'mediciones'].flatMap(t => [
+    { tabla: t, columna: 'usuario_id', sql: `ALTER TABLE ${t} ADD COLUMN usuario_id INT NOT NULL DEFAULT 0 AFTER id` },
+    { tabla: t, columna: 'anteojos_id', sql: `ALTER TABLE ${t} ADD COLUMN anteojos_id INT NULL AFTER usuario_id` },
+    { tabla: t, indice: `ix_${t}_usuario`, sql: `ALTER TABLE ${t} ADD KEY ix_${t}_usuario (usuario_id, cuando)` },
+  ]),
+];
 
 // Las sentencias del .sql, sin los comentarios.
 export function sentenciasDe(sql) {
@@ -41,14 +64,37 @@ export class Base {
 
   async crearEsquema() {
     for (const s of sentenciasDe(readFileSync(ESQUEMA, 'utf8'))) await this.pool.query(s);
+    await this.migrar();
+  }
+
+  // Devuelve cuántos pasos de MIGRACIONES hizo (0 si la base ya estaba al día).
+  async migrar() {
+    const existe = async (sql, valores) => (await this.pool.query(sql, valores))[0].length > 0;
+    const columna = (t, c) => existe('SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ?', [t, c]);
+    const indice = (t, i) => existe('SELECT 1 FROM information_schema.STATISTICS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND INDEX_NAME = ?', [t, i]);
+    const aceptaNull = (t, c) => existe("SELECT 1 FROM information_schema.COLUMNS WHERE TABLE_SCHEMA = DATABASE() AND TABLE_NAME = ? AND COLUMN_NAME = ? AND IS_NULLABLE = 'YES'", [t, c]);
+    let hechos = 0;
+    for (const m of MIGRACIONES) {
+      if (m.columna && await columna(m.tabla, m.columna)) continue;
+      if (m.nula && await aceptaNull(m.tabla, m.nula)) continue;
+      if (m.indice && await indice(m.tabla, m.indice)) continue;
+      if (m.quitar && !(await indice(m.tabla, m.quitar))) continue;
+      await this.pool.query(m.sql);
+      hechos++;
+    }
+    // Hasta el 3-oct-2026 se anotaba el color de las personas: el de su piel o su ropa.
+    // No se guarda más (ver reconocimiento), y lo que quedó se borra.
+    const [borrados] = await this.pool.query("UPDATE reconocimientos SET color = NULL WHERE nombre = 'persona' AND color IS NOT NULL");
+    if (borrados.affectedRows) hechos++;
+    return hechos;
   }
 
   // ── El aprendizaje ─────────────────────────────────────────────────────────
-  // Los ejemplos de ese extractor, agrupados: [{ nombre, vectores: [[...], ...] }].
-  async cargarEjemplos(fuente, dim) {
+  // Los ejemplos de ese extractor y de ese usuario, agrupados: [{ nombre, vectores: [[...], ...] }].
+  async cargarEjemplos(fuente, dim, usuarioId = SIN_CUENTA) {
     const [filas] = await this.pool.query(
-      'SELECT o.nombre, e.vector FROM ejemplos e JOIN objetos o ON o.id = e.objeto_id WHERE e.fuente = ? AND e.dim = ? ORDER BY o.id, e.id',
-      [fuente, dim]);
+      'SELECT o.nombre, e.vector FROM ejemplos e JOIN objetos o ON o.id = e.objeto_id WHERE e.fuente = ? AND e.dim = ? AND o.usuario_id = ? ORDER BY o.id, e.id',
+      [fuente, dim, usuarioId]);
     const porNombre = new Map();
     for (const f of filas) {
       if (f.vector.length !== dim * 4) continue;        // un vector cortado no entra a la red
@@ -58,21 +104,23 @@ export class Base {
     return [...porNombre].map(([nombre, vectores]) => ({ nombre, vectores }));
   }
 
-  // Deja en la base EXACTAMENTE lo que la red tiene en memoria para ese extractor.
-  // Todo o nada: si falla a la mitad, queda lo que había.
-  async guardarEjemplos(red) {
+  // Deja en la base EXACTAMENTE lo que la red de ese usuario tiene en memoria para ese
+  // extractor. Lo de los demás usuarios no se toca. Todo o nada: si falla a la mitad,
+  // queda lo que había.
+  async guardarEjemplos(red, usuarioId = SIN_CUENTA) {
     const con = await this.pool.getConnection();
     try {
       await con.beginTransaction();
-      await con.query('DELETE FROM ejemplos WHERE fuente = ? AND dim = ?', [red.fuente, red.inDim]);
+      await con.query('DELETE e FROM ejemplos e JOIN objetos o ON o.id = e.objeto_id WHERE e.fuente = ? AND e.dim = ? AND o.usuario_id = ?',
+                      [red.fuente, red.inDim, usuarioId]);
       for (const [c, nombre] of red.clases.entries()) {
-        await con.query('INSERT IGNORE INTO objetos (nombre) VALUES (?)', [nombre]);
-        const [[{ id }]] = await con.query('SELECT id FROM objetos WHERE nombre = ?', [nombre]);
+        await con.query('INSERT IGNORE INTO objetos (usuario_id, nombre) VALUES (?, ?)', [usuarioId, nombre]);
+        const [[{ id }]] = await con.query('SELECT id FROM objetos WHERE usuario_id = ? AND nombre = ?', [usuarioId, nombre]);
         const filas = red.memoria[c].map(v => [id, red.fuente, red.inDim, vectorABlob(v)]);
         if (filas.length) await con.query('INSERT INTO ejemplos (objeto_id, fuente, dim, vector) VALUES ?', [filas]);
       }
       // Un objeto que se olvidó no deja su nombre suelto.
-      await con.query('DELETE FROM objetos WHERE id NOT IN (SELECT DISTINCT objeto_id FROM ejemplos)');
+      await con.query('DELETE FROM objetos WHERE usuario_id = ? AND id NOT IN (SELECT DISTINCT objeto_id FROM ejemplos)', [usuarioId]);
       await con.commit();
     } catch (e) {
       await con.rollback();
@@ -84,29 +132,41 @@ export class Base {
 
   // ── Lo que se anota ────────────────────────────────────────────────────────
   // No esperan a la base: encolan y siguen. Lo que falle se informa por alError.
-  reconocimiento({ nombre, confianza, origen, color = null }) {
-    this._encolar('INSERT INTO reconocimientos (cuando, nombre, confianza, origen, color) VALUES (NOW(3), ?, ?, ?, ?)',
-                  [nombre, confianza, origen, color]);
+  // `ctx` dice de quién es: { usuarioId, anteojosId }. Sin ctx, «sin cuenta».
+  // De una persona no se guarda el color, venga de donde venga.
+  reconocimiento({ nombre, confianza, origen, color = null }, ctx = {}) {
+    this._encolar('INSERT INTO reconocimientos (usuario_id, anteojos_id, cuando, nombre, confianza, origen, color) VALUES (?, ?, NOW(3), ?, ?, ?, ?)',
+                  [...dueno(ctx), nombre, confianza, origen, nombre === 'persona' ? null : color]);
   }
 
-  identificacion(f) {
-    this._encolar('INSERT INTO identificaciones (cuando, tipo, marca, modelo, seguridad, respuesta) VALUES (NOW(3), ?, ?, ?, ?, ?)',
-                  [f.tipo, f.marca || null, f.modelo || null, f.seguridad, JSON.stringify(f)]);
+  identificacion(f, ctx = {}) {
+    this._encolar('INSERT INTO identificaciones (usuario_id, anteojos_id, cuando, tipo, marca, modelo, seguridad, respuesta) VALUES (?, ?, NOW(3), ?, ?, ?, ?, ?)',
+                  [...dueno(ctx), f.tipo, f.marca || null, f.modelo || null, f.seguridad, JSON.stringify(f)]);
   }
 
-  medicion({ objeto, distanciaM, velocidadKmh, llegadaS }) {
+  medicion({ objeto, distanciaM, velocidadKmh, llegadaS }, ctx = {}) {
     const finito = (v) => Number.isFinite(v) ? v : null;
-    this._encolar('INSERT INTO mediciones (cuando, objeto, distancia_m, velocidad_kmh, llegada_s, metodo) VALUES (NOW(3), ?, ?, ?, ?, ?)',
-                  [objeto, finito(distanciaM), finito(velocidadKmh), finito(llegadaS), 'tamano_aparente']);
+    this._encolar('INSERT INTO mediciones (usuario_id, anteojos_id, cuando, objeto, distancia_m, velocidad_kmh, llegada_s, metodo) VALUES (?, ?, NOW(3), ?, ?, ?, ?, ?)',
+                  [...dueno(ctx), objeto, finito(distanciaM), finito(velocidadKmh), finito(llegadaS), 'tamano_aparente']);
   }
 
   // La misma tarjeta guardada dos veces es una sola fila con el contador en 2.
-  tarjeta(t) {
+  tarjeta(t, ctx = {}) {
     const huella = createHash('sha256').update(t.contenido).digest('hex');
     this._encolar(
-      'INSERT INTO tarjetas_qr (huella, tipo, nombre, lineas, contenido) VALUES (?, ?, ?, ?, ?) ' +
+      'INSERT INTO tarjetas_qr (usuario_id, huella, tipo, nombre, lineas, contenido) VALUES (?, ?, ?, ?, ?, ?) ' +
       'ON DUPLICATE KEY UPDATE veces = veces + 1, vista = NOW()',
-      [huella, t.tipo, t.nombre || null, JSON.stringify(t.lineas), t.contenido]);
+      [dueno(ctx)[0], huella, t.tipo, t.nombre || null, JSON.stringify(t.lineas), t.contenido]);
+  }
+
+  // Lo mismo, ya atado a un dueño: es lo que recibe cada sesión de gafas como `registro`.
+  para(ctx = {}) {
+    return {
+      reconocimiento: (d) => this.reconocimiento(d, ctx),
+      identificacion: (f) => this.identificacion(f, ctx),
+      medicion: (m) => this.medicion(m, ctx),
+      tarjeta: (t) => this.tarjeta(t, ctx),
+    };
   }
 
   _encolar(sql, valores) {
@@ -147,6 +207,8 @@ export async function abrirBase({ host, port, user, password, database }, regist
     return null;
   }
 }
+
+const dueno = ({ usuarioId = SIN_CUENTA, anteojosId = null } = {}) => [usuarioId, anteojosId];
 
 // Al arrancar: la red personal sale de la base. Si la base está vacía y el archivo
 // de estado/ tenía algo (lo aprendido antes de que existiera la base), se sube.

@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="es"><head><meta charset="utf-8"/><meta content="width=device-width, initial-scale=1.0" name="viewport"/><meta content="web_dashboard" name="shell-type"/><link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@20..48,100..700,0..1,-50..200" rel="stylesheet"/><link href="https://fonts.googleapis.com" rel="preconnect"/><link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/><link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&amp;family=JetBrains+Mono:wght@400;500;600&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/><style>@layer base{html,body{margin:0;padding:0;}body{overscroll-behavior:none;}main>:first-child{margin-top:0!important;}main>:last-child{margin-bottom:0!important;}}::-webkit-scrollbar{display:none;}</style><script src="https://cdn.tailwindcss.com"></script><script id="tailwind-config">tailwind.config={darkMode:"class",theme:{extend:{colors:{"tertiary":"#2fe378","on-primary-fixed-variant":"#004c6e","secondary-container":"#00e3fd","on-primary-container":"#003751","surface-container":"#1d2025","surface":"#101318","tertiary-fixed":"#62ff95","on-surface-variant":"#bec8d2","background":"#101318","on-secondary-fixed-variant":"#004f58","on-primary":"#00344d","surface-container-high":"#272a2f","on-secondary":"#00363d","on-secondary-fixed":"#001f24","primary-fixed":"#c9e6ff","surface-bright":"#36393f","secondary":"#bdf4ff","error-container":"#93000a","primary":"#89ceff","inverse-on-surface":"#2e3036","inverse-primary":"#006591","on-tertiary-fixed-variant":"#005226","surface-variant":"#32353a","surface-tint":"#89ceff","on-tertiary-fixed":"#00210b","surface-dim":"#101318","tertiary-fixed-dim":"#2fe378","on-error":"#690005","secondary-fixed-dim":"#00daf3","surface-container-low":"#191c21","on-tertiary-container":"#003c1a","outline-variant":"#3e4850","on-background":"#e1e2e9","on-surface":"#e1e2e9","surface-container-lowest":"#0b0e13","error":"#ffb4ab","primary-container":"#0ea5e9","outline":"#88929b","on-tertiary":"#003918","primary-fixed-dim":"#89ceff","on-primary-fixed":"#001e2f","inverse-surface":"#e1e2e9","on-error-container":"#ffdad6","tertiary-container":"#00b359","on-secondary-container":"#00616d","surface-container-highest":"#32353a","secondary-fixed":"#9cf0ff"},borderRadius:{"DEFAULT":"0.125rem","lg":"0.25rem","xl":"0.5rem","full":"0.75rem"},spacing:{"margin-panel":"0.5rem","margin":"0.75rem","space-xxl":"1.5rem","gutter":"0.5rem","space-xl":"1rem","space-lg":"0.75rem","space-xs":"0.25rem","space-sm":"0.375rem","space-md":"0.5rem","space-xxs":"0.125rem","gutter-compact":"0.25rem"},fontFamily:{"headline-lg":["Inter"],"data-mono":["JetBrains Mono"],"telemetry-metric":["JetBrains Mono"],"body-lg":["Inter"],"headline-sm":["Inter"],"body-md":["Inter"],"label-lg":["JetBrains Mono"],"headline-md":["Inter"],"body-sm":["Inter"],"label-md":["JetBrains Mono"],"label-sm":["JetBrains Mono"]},fontSize:{"headline-lg":["1.5rem",{"lineHeight":"2rem","letterSpacing":"-0.02em","fontWeight":"600"}],"data-mono":["0.75rem",{"lineHeight":"1rem","letterSpacing":"-0.02em","fontWeight":"400"}],"telemetry-metric":["1.25rem",{"lineHeight":"1.5rem","letterSpacing":"-0.03em","fontWeight":"600"}],"body-lg":["0.875rem",{"lineHeight":"1.375rem","fontWeight":"400"}],"headline-sm":["0.875rem",{"lineHeight":"1.25rem","letterSpacing":"-0.01em","fontWeight":"600"}],"body-md":["0.8125rem",{"lineHeight":"1.25rem","fontWeight":"400"}],"label-lg":["0.8125rem",{"lineHeight":"1.125rem","letterSpacing":"-0.01em","fontWeight":"500"}],"headline-md":["1.125rem",{"lineHeight":"1.5rem","letterSpacing":"-0.015em","fontWeight":"600"}],"body-sm":["0.75rem",{"lineHeight":"1.125rem","fontWeight":"400"}],"label-md":["0.75rem",{"lineHeight":"1rem","letterSpacing":"0em","fontWeight":"500"}],"label-sm":["0.6875rem",{"lineHeight":"0.875rem","letterSpacing":"0.02em","fontWeight":"500"}]}}}}</script></head><body class="bg-surface font-body-md text-body-md text-on-surface antialiased"><aside class="fixed left-0 top-0 h-full w-64 bg-surface-container-lowest z-50 flex flex-col justify-between select-none shadow-[0_1px_8px_rgba(0,0,0,0.4)]"><div class="flex flex-col"><div class="h-14 px-space-lg flex items-center gap-space-sm bg-surface-container-lowest"><div class="w-7 h-7 rounded bg-surface-container-high flex items-center justify-center text-primary"><span class="material-symbols-outlined text-[18px]">videocam</span></div><div class="flex flex-col"><div class="flex items-center gap-space-xs"><span class="font-headline-sm text-headline-sm font-semibold tracking-wider text-primary">MIIA</span><span class="font-label-sm text-label-sm px-1 rounded bg-surface-container-high text-outline text-[10px] uppercase font-bold tracking-widest">CORE</span></div><span class="font-label-sm text-label-sm text-outline-variant tracking-wider uppercase text-[9px]">GLASSES AI HUD</span></div></div><div class="px-space-md py-space-xs"><div class="font-label-sm text-label-sm text-outline uppercase px-space-sm py-space-xs tracking-wider text-[10px]">Módulos de Sistema</div></div><nav class="flex flex-col gap-space-xxs px-space-md" data-active-classes="bg-surface-container-high text-primary font-medium"><a class="flex items-center justify-between px-space-sm py-space-sm rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="vision" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">visibility</span><span class="font-body-md text-body-md">Visión</span></div><span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span></a><a class="flex items-center justify-between px-space-sm py-space-sm rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="objetos-detectados" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">view_in_ar</span><span class="font-body-md text-body-md">Objetos detectados</span></div><span class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-surface-container text-on-surface-variant">14</span></a><a class="flex items-center justify-between px-space-sm py-space-sm rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="ensenar-objeto" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">model_training</span><span class="font-body-md text-body-md">Enseñar objeto</span></div><span class="font-label-sm text-label-sm px-1 rounded bg-secondary-container/20 text-secondary-fixed text-[9px] font-bold">FEW-SHOT</span></a><a aria-current="page" class="flex items-center justify-between px-space-sm py-space-sm rounded transition-colors bg-surface-container-high text-primary font-medium" data-path="historial" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">timeline</span><span class="font-body-md text-body-md">Historial</span></div><span class="font-label-sm text-label-sm text-outline font-data-mono">LOGS</span></a><a class="flex items-center justify-between px-space-sm py-space-sm rounded text-on-surface-variant hover:bg-surface-container hover:text-on-surface transition-colors" data-path="configuracion" href="#"><div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-[18px]">tune</span><span class="font-body-md text-body-md">Configuración</span></div></a></nav></div><div class="p-space-md m-space-md rounded bg-surface-container-low flex flex-col gap-space-sm shadow-[0_1px_8px_rgba(0,0,0,0.2)]"><div class="flex items-center justify-between"><span class="font-label-sm text-label-sm uppercase text-outline text-[10px]">Hardware Link</span><span class="font-label-sm text-label-sm text-outline-variant font-data-mono">v1.4.2-rc3</span></div><div class="flex items-center gap-space-sm"><span class="relative flex h-2 w-2"><span class="animate-ping absolute inline-flex h-full w-full rounded-full bg-tertiary opacity-75"></span><span class="relative inline-flex rounded-full h-2 w-2 bg-tertiary"></span></span><span class="font-label-md text-label-md text-on-surface font-semibold">Gafas conectadas</span></div><div class="flex flex-col gap-space-xxs pt-space-xs"><div class="flex items-center justify-between font-data-mono text-data-mono text-on-surface-variant"><span class="flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>WS Live</span><span class="text-tertiary">12ms</span></div><span class="font-data-mono text-data-mono text-outline-variant truncate text-[10px]">ws://192.168.1.104:8765</span></div></div></aside><div class="pl-64"><header class="fixed top-0 left-64 right-0 h-14 bg-surface-container-lowest/90 backdrop-blur-md z-40 px-space-lg flex items-center justify-between shadow-[0_1px_8px_rgba(0,0,0,0.3)]"><div class="flex items-center gap-space-md"><span class="font-headline-sm text-headline-sm font-semibold text-on-surface tracking-tight">MIIA Glasses</span><span class="text-outline-variant">·</span><span class="font-body-sm text-body-sm text-on-surface-variant">Visión aumentada en tiempo real</span></div><div class="flex items-center gap-space-md"><div class="hidden xl:flex items-center gap-space-xs"><div class="flex items-center gap-space-xs px-space-sm py-space-xxs rounded bg-surface-container font-data-mono text-data-mono"><span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span><span class="text-outline">WS:</span><span class="text-tertiary">Conectado</span></div><div class="flex items-center gap-space-xs px-space-sm py-space-xxs rounded bg-surface-container font-data-mono text-data-mono"><span class="text-outline">FPS:</span><span class="text-on-surface font-semibold">24.8 / 25</span></div><div class="flex items-center gap-space-xs px-space-sm py-space-xxs rounded bg-surface-container font-data-mono text-data-mono"><span class="text-outline">LAT:</span><span class="text-secondary">132 ms</span></div><div class="flex items-center gap-space-xs px-space-sm py-space-xxs rounded bg-surface-container font-data-mono text-data-mono"><span class="text-outline">ENG:</span><span class="text-primary-fixed">YOLOS-tiny + DINOv2</span></div></div><div class="flex items-center gap-space-xs"><button class="h-7 w-7 rounded bg-surface-container flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" title="Micrófono de gafas" type="button"><span class="material-symbols-outlined text-[16px]">mic</span></button><button class="h-7 w-7 rounded bg-surface-container flex items-center justify-center text-on-surface-variant hover:bg-surface-container-high hover:text-on-surface transition-colors" title="Sensor de cámara" type="button"><span class="material-symbols-outlined text-[16px]">videocam</span></button><button class="h-7 px-space-sm rounded bg-error-container/20 text-error hover:bg-error-container hover:text-on-error font-label-sm text-label-sm flex items-center gap-1 transition-colors" type="button"><span class="material-symbols-outlined text-[14px]">power_settings_new</span><span>Desconectar</span></button></div><div class="w-8 h-8 rounded-full bg-primary flex items-center justify-center"><span class="material-symbols-outlined text-on-primary text-[18px]">person</span></div></div></header><main class="w-full pt-14 bg-surface min-h-screen"><div class="flex flex-col w-full">
+<div class="p-space-lg flex flex-col gap-space-md">
+<!-- Top Filter & Diagnostic Command Bar -->
+<div class="bg-surface-container-low p-space-md rounded flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-space-md shadow-sm">
+<div class="flex flex-1 items-center gap-space-sm">
+<div class="relative flex-1 max-w-md">
+<span class="material-symbols-outlined absolute left-space-sm top-1/2 -translate-y-1/2 text-[16px] text-outline">search</span>
+<input class="w-full h-7 bg-surface-container-lowest pl-8 pr-space-sm text-label-md font-label-md text-on-surface placeholder:text-outline-variant focus:outline-none rounded" placeholder="Buscar celular, persona, monitor, tensor ID..." type="text"/>
+</div>
+<div class="flex items-center bg-surface-container-lowest rounded p-0.5">
+<button class="px-space-sm h-6 rounded bg-surface-container-high text-primary font-label-sm text-label-sm" type="button">Última hora</button>
+<button class="px-space-sm h-6 rounded text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm transition-colors" type="button">Hoy</button>
+<button class="px-space-sm h-6 rounded text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm transition-colors" type="button">Todo</button>
+</div>
+<div class="h-4 w-[1px] bg-surface-container-highest mx-space-xs hidden md:block"></div>
+<div class="flex items-center gap-space-xs">
+<span class="font-label-sm text-label-sm text-outline uppercase hidden sm:inline">Confianza:</span>
+<button class="px-space-sm h-6 rounded bg-surface-container-lowest text-on-surface hover:bg-surface-container-high font-data-mono text-data-mono flex items-center gap-1" type="button">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>&gt;90%
+          </button>
+<button class="px-space-sm h-6 rounded bg-surface-container-high text-primary font-data-mono text-data-mono flex items-center gap-1" type="button">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>&gt;95%
+          </button>
+</div>
+</div>
+<div class="flex items-center gap-space-xs self-end lg:self-auto">
+<button class="h-7 px-space-sm rounded bg-surface-container-high hover:bg-surface-bright text-on-surface font-label-sm text-label-sm flex items-center gap-1.5 transition-colors" type="button">
+<span class="material-symbols-outlined text-[15px] text-primary">data_object</span>
+<span>Exportar JSON</span>
+</button>
+<button class="h-7 px-space-sm rounded bg-surface-container-high hover:bg-surface-bright text-on-surface font-label-sm text-label-sm flex items-center gap-1.5 transition-colors" type="button">
+<span class="material-symbols-outlined text-[15px] text-secondary">table_chart</span>
+<span>CSV Telemetría</span>
+</button>
+<button class="h-7 px-space-sm rounded bg-error-container/20 hover:bg-error-container/35 text-error font-label-sm text-label-sm flex items-center gap-1 transition-colors" type="button">
+<span class="material-symbols-outlined text-[15px]">delete_sweep</span>
+<span>Limpiar</span>
+</button>
+</div>
+</div>
+<!-- Main Workspace: Event History + System Metrics -->
+<div class="grid grid-cols-1 xl:grid-cols-12 gap-space-md items-start">
+<!-- Central Detection Stream (8 Cols) -->
+<section class="xl:col-span-8 flex flex-col gap-space-sm">
+<!-- Stream Header Info -->
+<div class="flex items-center justify-between px-space-xs">
+<div class="flex items-center gap-space-sm">
+<span class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span>
+<span class="font-headline-sm text-headline-sm text-on-surface">Registro Cronológico de Detecciones</span>
+<span class="font-data-mono text-data-mono px-1.5 py-0.5 rounded bg-surface-container-high text-outline">5 eventos recientes</span>
+</div>
+<div class="flex items-center gap-space-xs font-data-mono text-data-mono text-outline">
+<span class="material-symbols-outlined text-[14px]">sensors</span>
+<span>FOV ÓPTICO 82° ACTIVO</span>
+</div>
+</div>
+<!-- Detection Event Cards List -->
+<div class="flex flex-col gap-space-xs">
+<!-- Event 1 (Most Recent) -->
+<article class="p-space-md rounded bg-surface-container-low hover:bg-surface-container transition-colors shadow-sm flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="px-space-xs py-0.5 rounded bg-surface-container-lowest font-data-mono text-data-mono text-primary font-semibold">22:31:04</span>
+<span class="font-data-mono text-data-mono text-outline-variant">hace 2 min</span>
+<span class="font-headline-md text-headline-md text-on-surface font-semibold">Celular</span>
+<span class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-primary-container/20 text-primary-fixed uppercase tracking-wider">Dispositivo</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="px-space-sm py-0.5 rounded bg-surface-container-lowest font-data-mono text-data-mono text-tertiary flex items-center gap-1 font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>97% CONF
+                </span>
+<span class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-surface-container-highest text-secondary font-data-mono">TENSOR-ID: #0921B</span>
+</div>
+</div>
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-space-xs pt-space-xs bg-surface-container-lowest/60 p-space-sm rounded">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline uppercase text-[10px]">Distancia Est.</span>
+<span class="font-telemetry-metric text-telemetry-metric text-on-surface">1,2 <span class="text-label-md text-outline">m</span></span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline uppercase text-[10px]">Duración en FOV</span>
+<span class="font-telemetry-metric text-telemetry-metric text-on-surface">45 <span class="text-label-md text-outline">seg</span></span>
+</div>
+<div class="flex flex-col sm:col-span-2">
+<span class="font-label-sm text-label-sm text-outline uppercase text-[10px]">Acción Asociada / Contexto</span>
+<span class="font-body-sm text-body-sm text-secondary truncate">Consulta MIIA efectuada (iPhone 14 Pro)</span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-space-xxs">
+<div class="flex items-center gap-space-sm text-outline-variant font-data-mono text-data-mono">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">center_focus_strong</span>[x: 412, y: 280, w: 94, h: 182]</span>
+<span>IoU: 0.89</span>
+</div>
+<button class="h-6 px-space-sm rounded bg-surface-container-high hover:bg-surface-bright text-primary font-label-sm text-label-sm flex items-center gap-1 transition-colors" type="button">
+<span class="material-symbols-outlined text-[14px]">preview</span>
+<span>Ver Snapshot / Tensor</span>
+</button>
+</div>
+</article>
+<!-- Event 2 -->
+<article class="p-space-md rounded bg-surface-container-low hover:bg-surface-container transition-colors shadow-sm flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="px-space-xs py-0.5 rounded bg-surface-container-lowest font-data-mono text-data-mono text-on-surface font-semibold">22:29:18</span>
+<span class="font-data-mono text-data-mono text-outline-variant">hace 4 min</span>
+<span class="font-headline-md text-headline-md text-on-surface font-semibold">Monitor</span>
+<span class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant uppercase tracking-wider">Periférico</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="px-space-sm py-0.5 rounded bg-surface-container-lowest font-data-mono text-data-mono text-tertiary flex items-center gap-1 font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>94% CONF
+                </span>
+<span class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-surface-container-highest text-outline font-data-mono">TENSOR-ID: #0920F</span>
+</div>
+</div>
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-space-xs pt-space-xs bg-surface-container-lowest/60 p-space-sm rounded">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline uppercase text-[10px]">Distancia Est.</span>
+<span class="font-telemetry-metric text-telemetry-metric text-on-surface">2,1 <span class="text-label-md text-outline">m</span></span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline uppercase text-[10px]">Duración en FOV</span>
+<span class="font-telemetry-metric text-telemetry-metric text-on-surface">12 <span class="text-label-md text-outline">min</span></span>
+</div>
+<div class="flex flex-col sm:col-span-2">
+<span class="font-label-sm text-label-sm text-outline uppercase text-[10px]">Acción Asociada / Contexto</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate">Detectado en fondo</span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-space-xxs">
+<div class="flex items-center gap-space-sm text-outline-variant font-data-mono text-data-mono">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">center_focus_strong</span>[x: 104, y: 44, w: 520, h: 320]</span>
+<span>IoU: 0.92</span>
+</div>
+<button class="h-6 px-space-sm rounded bg-surface-container-high hover:bg-surface-bright text-on-surface font-label-sm text-label-sm flex items-center gap-1 transition-colors" type="button">
+<span class="material-symbols-outlined text-[14px]">photo_camera</span>
+<span>Snapshot</span>
+</button>
+</div>
+</article>
+<!-- Event 3 -->
+<article class="p-space-md rounded bg-surface-container-low hover:bg-surface-container transition-colors shadow-sm flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="px-space-xs py-0.5 rounded bg-surface-container-lowest font-data-mono text-data-mono text-on-surface font-semibold">22:28:45</span>
+<span class="font-data-mono text-data-mono text-outline-variant">hace 5 min</span>
+<span class="font-headline-md text-headline-md text-on-surface font-semibold">Persona</span>
+<span class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-secondary-container/20 text-secondary-fixed uppercase tracking-wider">Humanoide</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="px-space-sm py-0.5 rounded bg-surface-container-lowest font-data-mono text-data-mono text-tertiary flex items-center gap-1 font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>95% CONF
+                </span>
+<span class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-surface-container-highest text-outline font-data-mono">TENSOR-ID: #0919A</span>
+</div>
+</div>
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-space-xs pt-space-xs bg-surface-container-lowest/60 p-space-sm rounded">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline uppercase text-[10px]">Distancia Est.</span>
+<span class="font-telemetry-metric text-telemetry-metric text-on-surface">1,8 <span class="text-label-md text-outline">m</span></span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline uppercase text-[10px]">Duración en FOV</span>
+<span class="font-telemetry-metric text-telemetry-metric text-on-surface">3 <span class="text-label-md text-outline">m</span> 12 <span class="text-label-md text-outline">s</span></span>
+</div>
+<div class="flex flex-col sm:col-span-2">
+<span class="font-label-sm text-label-sm text-outline uppercase text-[10px]">Acción Asociada / Contexto</span>
+<span class="font-body-sm text-body-sm text-primary font-medium truncate">Sujeto identificado como Usuario Registrado</span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-space-xxs">
+<div class="flex items-center gap-space-sm text-outline-variant font-data-mono text-data-mono">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">center_focus_strong</span>[x: 620, y: 12, w: 210, h: 480]</span>
+<span>Pose: Face-Forward</span>
+</div>
+<button class="h-6 px-space-sm rounded bg-surface-container-high hover:bg-surface-bright text-on-surface font-label-sm text-label-sm flex items-center gap-1 transition-colors" type="button">
+<span class="material-symbols-outlined text-[14px]">face</span>
+<span>Ver Perfil</span>
+</button>
+</div>
+</article>
+<!-- Event 4 -->
+<article class="p-space-md rounded bg-surface-container-low hover:bg-surface-container transition-colors shadow-sm flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="px-space-xs py-0.5 rounded bg-surface-container-lowest font-data-mono text-data-mono text-on-surface font-semibold">22:15:30</span>
+<span class="font-data-mono text-data-mono text-outline-variant">hace 18 min</span>
+<span class="font-headline-md text-headline-md text-on-surface font-semibold">Taza térmica</span>
+<span class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-tertiary-container/30 text-tertiary-fixed uppercase tracking-wider font-semibold">Aprendido por usuario</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="px-space-sm py-0.5 rounded bg-surface-container-lowest font-data-mono text-data-mono text-tertiary flex items-center gap-1 font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>92% CONF
+                </span>
+<span class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-surface-container-highest text-outline font-data-mono">FEW-SHOT-V2</span>
+</div>
+</div>
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-space-xs pt-space-xs bg-surface-container-lowest/60 p-space-sm rounded">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline uppercase text-[10px]">Distancia Est.</span>
+<span class="font-telemetry-metric text-telemetry-metric text-on-surface">0,8 <span class="text-label-md text-outline">m</span></span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline uppercase text-[10px]">Duración en FOV</span>
+<span class="font-telemetry-metric text-telemetry-metric text-on-surface">5 <span class="text-label-md text-outline">m</span> 40 <span class="text-label-md text-outline">s</span></span>
+</div>
+<div class="flex flex-col sm:col-span-2">
+<span class="font-label-sm text-label-sm text-outline uppercase text-[10px]">Acción Asociada / Contexto</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate">Embedding personalizado activo (#OBJ-TZA-04)</span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-space-xxs">
+<div class="flex items-center gap-space-sm text-outline-variant font-data-mono text-data-mono">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">center_focus_strong</span>[x: 310, y: 380, w: 76, h: 110]</span>
+<span>Clase local</span>
+</div>
+<button class="h-6 px-space-sm rounded bg-surface-container-high hover:bg-surface-bright text-on-surface font-label-sm text-label-sm flex items-center gap-1 transition-colors" type="button">
+<span class="material-symbols-outlined text-[14px]">tune</span>
+<span>Re-entrenar</span>
+</button>
+</div>
+</article>
+<!-- Event 5 -->
+<article class="p-space-md rounded bg-surface-container-low hover:bg-surface-container transition-colors shadow-sm flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="px-space-xs py-0.5 rounded bg-surface-container-lowest font-data-mono text-data-mono text-on-surface font-semibold">22:04:12</span>
+<span class="font-data-mono text-data-mono text-outline-variant">hace 29 min</span>
+<span class="font-headline-md text-headline-md text-on-surface font-semibold">Teclado mecánico</span>
+<span class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant uppercase tracking-wider">Hardware</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<span class="px-space-sm py-0.5 rounded bg-surface-container-lowest font-data-mono text-data-mono text-tertiary flex items-center gap-1 font-semibold">
+<span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>98% CONF
+                </span>
+<span class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-surface-container-highest text-outline font-data-mono">TENSOR-ID: #0911C</span>
+</div>
+</div>
+<div class="grid grid-cols-2 sm:grid-cols-4 gap-space-xs pt-space-xs bg-surface-container-lowest/60 p-space-sm rounded">
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline uppercase text-[10px]">Distancia Est.</span>
+<span class="font-telemetry-metric text-telemetry-metric text-on-surface">0,6 <span class="text-label-md text-outline">m</span></span>
+</div>
+<div class="flex flex-col">
+<span class="font-label-sm text-label-sm text-outline uppercase text-[10px]">Duración en FOV</span>
+<span class="font-telemetry-metric text-telemetry-metric text-on-surface">18 <span class="text-label-md text-outline">min</span></span>
+</div>
+<div class="flex flex-col sm:col-span-2">
+<span class="font-label-sm text-label-sm text-outline uppercase text-[10px]">Acción Asociada / Contexto</span>
+<span class="font-body-sm text-body-sm text-on-surface-variant truncate">Interacción gestual focal registrada</span>
+</div>
+</div>
+<div class="flex items-center justify-between pt-space-xxs">
+<div class="flex items-center gap-space-sm text-outline-variant font-data-mono text-data-mono">
+<span class="flex items-center gap-1"><span class="material-symbols-outlined text-[14px]">center_focus_strong</span>[x: 180, y: 410, w: 320, h: 90]</span>
+<span>Layout: ANSI-65%</span>
+</div>
+<button class="h-6 px-space-sm rounded bg-surface-container-high hover:bg-surface-bright text-on-surface font-label-sm text-label-sm flex items-center gap-1 transition-colors" type="button">
+<span class="material-symbols-outlined text-[14px]">photo_camera</span>
+<span>Snapshot</span>
+</button>
+</div>
+</article>
+</div>
+<!-- Pagination & Realtime Log Counter -->
+<div class="flex items-center justify-between p-space-sm bg-surface-container-low rounded text-label-sm font-label-sm text-outline">
+<div class="flex items-center gap-space-sm">
+<span>Página 1 de 28</span>
+<span>·</span>
+<span>138 eventos capturados en sesión</span>
+</div>
+<div class="flex items-center gap-space-xs">
+<button class="h-6 px-space-sm rounded bg-surface-container text-outline-variant hover:text-on-surface transition-colors" disabled="" type="button">Anterior</button>
+<button class="h-6 px-space-sm rounded bg-surface-container-high text-on-surface hover:bg-surface-bright transition-colors" type="button">Siguiente</button>
+</div>
+</div>
+</section>
+<!-- Right Panel: Telemetry & Hardware Audit (4 Cols) -->
+<aside class="xl:col-span-4 flex flex-col gap-space-md">
+<!-- Live Real-Time Latency Section -->
+<div class="p-space-md rounded bg-surface-container-low shadow-sm flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-xs">
+<span class="w-1.5 h-1.5 rounded-full bg-secondary"></span>
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">Latencia en Tiempo Real</span>
+</div>
+<span class="font-data-mono text-data-mono text-secondary">60s WINDOW</span>
+</div>
+<div class="flex items-baseline justify-between pt-space-xxs">
+<div class="flex items-baseline gap-space-xs">
+<span class="font-telemetry-metric text-telemetry-metric text-on-surface text-2xl font-bold" id="current-lat">128</span>
+<span class="font-label-md text-label-md text-outline">ms</span>
+</div>
+<div class="flex items-center gap-space-sm font-data-mono text-data-mono text-outline-variant">
+<span>MIN: <strong class="text-tertiary">110ms</strong></span>
+<span>MAX: <strong class="text-error">142ms</strong></span>
+</div>
+</div>
+<!-- Sparkline Chart (Oscillating 110ms - 140ms) -->
+<div class="w-full h-16 bg-surface-container-lowest rounded p-space-xs flex items-end">
+<svg class="w-full h-full overflow-visible" preserveaspectratio="none" viewbox="0 0 300 60">
+<defs>
+<lineargradient id="latencyGradient" x1="0" x2="0" y1="0" y2="1">
+<stop offset="0%" stop-color="#00e3fd" stop-opacity="0.3"></stop>
+<stop offset="100%" stop-color="#00e3fd" stop-opacity="0.0"></stop>
+</lineargradient>
+</defs>
+<!-- Grid lines -->
+<line stroke="#272a2f" stroke-dasharray="2,2" stroke-width="1" x1="0" x2="300" y1="15" y2="15"></line>
+<line stroke="#272a2f" stroke-dasharray="2,2" stroke-width="1" x1="0" x2="300" y1="40" y2="40"></line>
+<!-- Area -->
+<polygon fill="url(#latencyGradient)" points="0,45 15,35 30,38 45,28 60,30 75,20 90,26 105,38 120,32 135,22 150,18 165,24 180,36 195,29 210,19 225,25 240,34 255,27 270,16 285,22 300,20 300,60 0,60"></polygon>
+<!-- Sparkline Stroke -->
+<polyline fill="none" points="0,45 15,35 30,38 45,28 60,30 75,20 90,26 105,38 120,32 135,22 150,18 165,24 180,36 195,29 210,19 225,25 240,34 255,27 270,16 285,22 300,20" stroke="#00e3fd" stroke-width="1.8"></polyline>
+<circle cx="300" cy="20" fill="#00e3fd" r="3"></circle>
+</svg>
+</div>
+<div class="flex items-center justify-between font-data-mono text-data-mono text-[10px] text-outline">
+<span>-60s</span>
+<span>-30s</span>
+<span>LIVE (T=0)</span>
+</div>
+</div>
+<!-- Hardware & System State Nodes -->
+<div class="p-space-md rounded bg-surface-container-low shadow-sm flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">Estado del Sistema</span>
+<span class="font-data-mono text-data-mono text-tertiary">HEALTH: 100%</span>
+</div>
+<div class="flex flex-col gap-space-xs">
+<!-- Camera Node -->
+<div class="p-space-sm rounded bg-surface-container-lowest flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">Cámara</span>
+<span class="font-label-sm text-label-sm text-outline-variant">Stream 30fps estable</span>
+</div>
+</div>
+<span class="font-data-mono text-data-mono text-tertiary">Conectada</span>
+</div>
+<!-- Mic Node -->
+<div class="p-space-sm rounded bg-surface-container-lowest flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">Micrófono</span>
+<span class="font-label-sm text-label-sm text-outline-variant">Sensibilidad normal</span>
+</div>
+</div>
+<span class="font-data-mono text-data-mono text-tertiary">Conectado</span>
+</div>
+<!-- WebSocket Node -->
+<div class="p-space-sm rounded bg-surface-container-lowest flex flex-col gap-space-xxs">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">WebSocket</span>
+</div>
+<span class="font-data-mono text-data-mono text-tertiary">Conectado</span>
+</div>
+<div class="font-data-mono text-data-mono text-[10px] text-outline-variant pl-space-md">
+                Ping 14ms · 12,480 packets rx / 0 dropped
+              </div>
+</div>
+<!-- Vision Engine Node -->
+<div class="p-space-sm rounded bg-surface-container-lowest flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<div class="flex flex-col">
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">Motor de visión</span>
+<span class="font-label-sm text-label-sm text-primary-fixed">YOLOS-tiny + DINOv2</span>
+</div>
+</div>
+<span class="font-data-mono text-data-mono text-tertiary font-semibold">Activo</span>
+</div>
+<!-- Database Node -->
+<div class="p-space-sm rounded bg-surface-container-lowest flex flex-col gap-space-xxs">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">Base de datos</span>
+</div>
+<span class="font-data-mono text-data-mono text-tertiary">MySQL Conectado</span>
+</div>
+<div class="font-data-mono text-data-mono text-[10px] text-outline-variant pl-space-md">
+                Latency: 2ms · Queries: 342
+              </div>
+</div>
+<!-- LLM Engine Node -->
+<div class="p-space-sm rounded bg-surface-container-lowest flex flex-col gap-space-xxs">
+<div class="flex items-center justify-between">
+<div class="flex items-center gap-space-sm">
+<span class="w-2 h-2 rounded-full bg-tertiary"></span>
+<span class="font-body-sm text-body-sm text-on-surface font-semibold">LLM</span>
+</div>
+<span class="font-data-mono text-data-mono text-tertiary font-semibold">Disponible</span>
+</div>
+<div class="font-data-mono text-data-mono text-[10px] text-outline-variant pl-space-md">
+                Respuesta promedio: 820ms
+              </div>
+</div>
+</div>
+</div>
+<!-- Hardware Diagnostics & Resource Metrics -->
+<div class="p-space-md rounded bg-surface-container-low shadow-sm flex flex-col gap-space-sm">
+<div class="flex items-center justify-between">
+<span class="font-headline-sm text-headline-sm text-on-surface font-semibold">Métricas de Hardware</span>
+<span class="font-data-mono text-data-mono text-outline">TELEMETRÍA LOCAL</span>
+</div>
+<div class="grid grid-cols-2 gap-space-sm">
+<!-- Battery Card -->
+<div class="p-space-sm rounded bg-surface-container-lowest flex flex-col gap-space-xxs">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-outline">Batería Gafas</span>
+<span class="material-symbols-outlined text-[16px] text-tertiary">battery_charging_80</span>
+</div>
+<span class="font-telemetry-metric text-telemetry-metric text-on-surface">78%</span>
+<span class="font-data-mono text-data-mono text-[10px] text-tertiary">Estimado: 3h 15m</span>
+<div class="w-full bg-surface-container-high h-1 rounded overflow-hidden mt-1">
+<div class="bg-tertiary h-full w-[78%]"></div>
+</div>
+</div>
+<!-- SoC Temperature Card -->
+<div class="p-space-sm rounded bg-surface-container-lowest flex flex-col gap-space-xxs">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-outline">Temp SoC</span>
+<span class="material-symbols-outlined text-[16px] text-secondary">thermostat</span>
+</div>
+<span class="font-telemetry-metric text-telemetry-metric text-on-surface">37.8 <span class="text-label-md text-outline">°C</span></span>
+<span class="font-data-mono text-data-mono text-[10px] text-tertiary">Estado: Normal</span>
+<div class="w-full bg-surface-container-high h-1 rounded overflow-hidden mt-1">
+<div class="bg-secondary-container h-full w-[47%]"></div>
+</div>
+</div>
+<!-- Host RAM Card -->
+<div class="p-space-sm rounded bg-surface-container-lowest flex flex-col gap-space-xxs">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-outline">RAM Host</span>
+<span class="material-symbols-outlined text-[16px] text-primary">memory</span>
+</div>
+<span class="font-telemetry-metric text-telemetry-metric text-on-surface">4.2 <span class="text-label-md text-outline">/ 16 GB</span></span>
+<span class="font-data-mono text-data-mono text-[10px] text-outline-variant">26.2% en uso</span>
+<div class="w-full bg-surface-container-high h-1 rounded overflow-hidden mt-1">
+<div class="bg-primary-container h-full w-[26%]"></div>
+</div>
+</div>
+<!-- GPU VRAM Card -->
+<div class="p-space-sm rounded bg-surface-container-lowest flex flex-col gap-space-xxs">
+<div class="flex items-center justify-between">
+<span class="font-label-sm text-label-sm text-outline">VRAM GPU</span>
+<span class="material-symbols-outlined text-[16px] text-secondary-fixed">developer_board</span>
+</div>
+<span class="font-telemetry-metric text-telemetry-metric text-on-surface">3.4 <span class="text-label-md text-outline">/ 8 GB</span></span>
+<span class="font-data-mono text-data-mono text-[10px] text-secondary">42.5% Tensor Cache</span>
+<div class="w-full bg-surface-container-high h-1 rounded overflow-hidden mt-1">
+<div class="bg-secondary h-full w-[42%]"></div>
+</div>
+</div>
+</div>
+</div>
+</aside>
+</div>
+</div>
+</div>
+<script>
+  // Dynamic Realtime Oscillation Simulation for Latency
+  setInterval(() => {
+    const latEl = document.getElementById('current-lat');
+    if (latEl) {
+      const simulatedLat = Math.floor(118 + Math.random() * 22);
+      latEl.textContent = simulatedLat;
+    }
+  }, 1800);
+</script></main></div></body></html>

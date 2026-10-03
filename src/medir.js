@@ -86,6 +86,16 @@ export const ALTO_TIPICO_M = {
   auto: 1.5, moto: 1.2, bicicleta: 1.1, colectivo: 3.2, camion: 3.5, persona: 1.7,
 };
 
+// El lado más largo típico de cosas de tamaño parejo, en metros (3-oct-2026). Se
+// compara con el lado más largo del recuadro, que depende menos de cómo esté girada.
+// Una mesa o una pantalla pueden medir de 30 cm a 2 m: ésas no se miden.
+export const LARGO_TIPICO_M = {
+  celular: 0.15, taza: 0.1, botella: 0.25, copa: 0.18, libro: 0.24, mouse: 0.11, 'control remoto': 0.18,
+  teclado: 0.45, notebook: 0.35, silla: 0.9, pelota: 0.22, banana: 0.18, manzana: 0.08, naranja: 0.08,
+  tijera: 0.18, 'cepillo dental': 0.19, cuchara: 0.17, tenedor: 0.19, cuchillo: 0.22, mochila: 0.45,
+  valija: 0.6, gato: 0.45, perro: 0.7, lata: 0.12,
+};
+
 export function distanciaPorAltoM(clase, altoPx, focalPx) {
   const alto = ALTO_TIPICO_M[clase];
   if (alto === undefined) throw new Error(`no hay alto típico para: ${clase}`);

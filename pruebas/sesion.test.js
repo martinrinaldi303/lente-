@@ -222,7 +222,7 @@ test('la red personal puede usar otro extractor, y no se mezclan fuentes', async
   assert.throws(() => armar({ extractorPersonal: lento }), /la red personal es rasgos_v0\|168 y el extractor es promedio\|3/);
 });
 
-test('con la pantalla libre, un dispositivo reconocido muestra sus datos y su color', async () => {
+test('con la pantalla libre, un dispositivo reconocido muestra sus datos y su color; una persona, sin color', async () => {
   let nombre = 'pantalla';
   const conjunto = { clases: ['nada', 'pantalla', 'persona'], predecir: async () => ({ indice: 1, nombre, confianza: 0.9 }) };
   const { sesion, hud, mostrar } = armar({ conjunto });
@@ -238,9 +238,21 @@ test('con la pantalla libre, un dispositivo reconocido muestra sus datos y su co
   // Lo que no tiene ficha muestra sólo lo medido. Y lo medido tiene un límite: el
   // dibujo es una barra azul finita, que no llena el medio del recuadro, así que
   // el color que gana es el del fondo. Con objetos finos el color no es del objeto.
-  nombre = 'persona';
+  nombre = 'pinza';
   await mostrar('pinza', 5, rng);
   assert.deepEqual(hud().lineas, ['Color: gris']);
+
+  // De una persona no se dice el color: sería el de su piel o su ropa. Ni en la
+  // pantalla, ni al LLM, ni en el registro, aunque se haya medido (el dibujo es rojo).
+  const anotados = [];
+  sesion.registro = { reconocimiento: (r) => anotados.push(r) };
+  nombre = 'persona';
+  await mostrar('taza', 5, rng);
+  assert.equal(sesion.color, 'rojo');
+  assert.deepEqual(hud().lineas, []);
+  assert.equal(sesion.ejecutar('que_veo').color, undefined);
+  assert.equal(anotados.at(-1).nombre, 'persona');
+  assert.equal(anotados.at(-1).color, null);
 
   // Un nombre largo no se come el porcentaje: se acorta el rótulo.
   nombre = 'reproductor mp3';
