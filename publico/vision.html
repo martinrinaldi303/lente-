@@ -102,7 +102,11 @@
             <label class="flex items-center gap-space-xs font-label-sm text-label-sm text-outline" title="Muestra también lo que el detector marcó y NO se usa (punteado): lo dudoso y lo que está fuera de la mirada"><input id="verTodo" type="checkbox" class="accent-[#0ea5e9]"/> VER LO DESCARTADO</label>
           </div>
         </div>
-        <p class="font-body-sm text-body-sm text-outline flex flex-wrap items-center gap-x-space-sm">¿Un recuadro está mal (ropa marcada como persona)? Tocalo sobre la imagen y las gafas aprenden que eso no es. <button id="olvidarCorrecciones" type="button" class="underline hover:text-on-surface">Olvidar las correcciones</button></p>
+        <div class="flex flex-wrap items-center gap-space-sm font-body-sm text-body-sm text-outline">
+          <button id="ropaNoEsPersona" type="button" class="px-space-sm py-1 rounded bg-surface-container text-on-surface font-label-md text-label-md hover:bg-surface-container-high flex items-center gap-1" title="Corrige de una vez todas las «personas» del cuadro que no tienen cara y no están en el centro"><span class="material-symbols-outlined text-[16px]" aria-hidden="true">checkroom</span>La ropa no es persona</button>
+          <span>Con la cámara mirando el placar (y sin nadie más en el cuadro). Para un solo recuadro equivocado, tocalo sobre la imagen.</span>
+          <button id="olvidarCorrecciones" type="button" class="underline hover:text-on-surface">Olvidar las correcciones</button>
+        </div>
       </section>
 
       <section class="bg-surface-container-lowest rounded-lg p-space-md flex flex-col gap-space-sm">
@@ -292,7 +296,8 @@ cliente.on('hud', (m) => {
 cliente.on('cajas', (m) => {
   ultimasCajas = m;
   dibujarCajas($('cajas'), m, opcionesDeDibujo());
-  const nombre = m.mirado ? `${conMayuscula(m.mirado.nombre)} · ${m.mirado.confianza}%${m.mirado.metros !== undefined ? ` · ${String(m.mirado.metros).replace('.', ',')} m` : ''}` : '—';
+  const nombre = !m.mirado ? '—' : m.mirado.desconocido ? `${m.mirado.nombre} · ¿qué es?`
+    : `${conMayuscula(m.mirado.nombre)} · ${m.mirado.confianza}%${m.mirado.metros !== undefined ? ` · ${String(m.mirado.metros).replace('.', ',')} m` : ''}`;
   $('mirando').textContent = nombre;
   if ((m.mirado?.nombre ?? null) !== ultimoMirado) { ultimoMirado = m.mirado?.nombre ?? null; anotar('MIRADA', m.mirado ? `mirando: ${nombre}` : 'nada en la mirada'); }
 });
@@ -323,10 +328,18 @@ $('cajas').onclick = (e) => {
                  ...(ultimasCajas.mirado ? [ultimasCajas.mirado] : [])];
   const tocada = cajas.filter(b => x >= b.x0 && x <= b.x0 + b.ancho && y >= b.y0 && y <= b.y0 + b.alto).sort((a, b) => a.ancho * a.alto - b.ancho * b.alto)[0];
   if (!tocada) return App.avisar('Ahí no hay ningún recuadro. Tildá «Ver lo descartado» para ver todo lo que marcó el detector.');
+  // El naranja ya dice que no sabe qué es: no hay nombre que corregir.
+  if (tocada.desconocido) return App.avisar('Eso las gafas no lo conocen: preguntá «¿Qué es?» o enseñáselo.');
   const nombre = tocada.nombre;
   if (!confirm(`¿Eso NO es «${nombre}»? Las gafas van a recordar cómo se ve, y no lo van a marcar más.`)) return;
   cliente.enviarJson({ t: 'corregir', nombre, caja: { x0: tocada.x0, y0: tocada.y0, ancho: tocada.ancho, alto: tocada.alto } });
   anotar('SISTEMA', `corrección: eso no es «${nombre}»`);
+};
+$('ropaNoEsPersona').onclick = () => {
+  if (!cliente.cam) return App.avisar('Prendé la cámara y apuntala a la ropa.');
+  if (!confirm('¿En el cuadro no hay nadie más que vos? Las «personas» sin cara que no están en el centro se van a guardar como «no es una persona».')) return;
+  cliente.enviarJson({ t: 'corregir', nombre: 'persona', todas: true });
+  anotar('SISTEMA', 'corrección: la ropa del cuadro no es persona');
 };
 $('olvidarCorrecciones').onclick = () => { if (confirm('¿Olvidar todo lo que le corregiste al detector?')) cliente.enviarJson({ t: 'olvidar_correcciones' }); };
 $('verTodo').onchange = $('verEscena').onchange = () => dibujarCajas($('cajas'), ultimasCajas, opcionesDeDibujo());

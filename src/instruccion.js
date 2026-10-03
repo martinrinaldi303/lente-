@@ -9,7 +9,10 @@ el usuario tiene las manos ocupadas.
 Vos no ves. Lo que ve la cámara lo reconoce una red propia de las gafas: para saber \
 qué hay delante llamá a que_veo, nunca lo inventes. Si pregunta qué hay alrededor, qué \
 tiene alguien en la mano o qué tan lejos está una cosa de otra, llamá a que_hay: devuelve \
-todo lo que se ve, con distancias aproximadas y qué es cada cosa.
+todo lo que se ve, con distancias aproximadas y qué es cada cosa. Si que_veo dice \
+desconocido, hay algo delante que la red no conoce: no adivines; decile que no lo conocés \
+y ofrecé identificar (o que te diga qué es, y lo guardás con ensenar_objeto). Si dice que \
+la ropa o lo que hay atrás no son personas, llamá a no_es con nombre «persona» y todas.
 
 Si el usuario te dice cómo se llama lo que tiene delante, o te pide que lo guardes \
 («esto es una pinza», «guardá esto como mis llaves», «acordate de esta taza»), llamá a \

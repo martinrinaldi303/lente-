@@ -84,7 +84,9 @@ function dibujarCajas(msg) {
     ctxCajas.strokeStyle = color;
     ctxCajas.lineWidth = grosor;
     ctxCajas.strokeRect(c.x0, c.y0, c.ancho, c.alto);
-    const texto = `${c.nombre} ${c.confianza}%` + (c.metros !== undefined ? ` · ${String(c.metros).replace('.', ',')} m` : '');
+    // Lo que no se parece a nada conocido viene sin porcentaje (src/parecido.js).
+    const texto = c.desconocido ? `${c.nombre} · ¿qué es?`
+      : `${c.nombre} ${c.confianza}%` + (c.metros !== undefined ? ` · ${String(c.metros).replace('.', ',')} m` : '');
     const w = ctxCajas.measureText(texto).width + 10, y = c.y0 >= 22 ? c.y0 - 22 : c.y0 + 2;
     ctxCajas.fillStyle = 'rgba(0, 0, 0, 0.65)';
     ctxCajas.fillRect(c.x0, y, w, 20);
@@ -101,7 +103,7 @@ function dibujarCajas(msg) {
       ctxCajas.stroke();
     }
   }
-  if (mirado) caja(mirado, '#5fd0ff', 3);
+  if (mirado) caja(mirado, mirado.desconocido ? '#ffb74d' : '#5fd0ff', 3);
 }
 
 // Con qué cuenta está conectada esta página: la cookie del panel la elige sola. Sin

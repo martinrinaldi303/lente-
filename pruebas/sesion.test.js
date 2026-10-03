@@ -254,6 +254,24 @@ test('con la pantalla libre, un dispositivo reconocido muestra sus datos y su co
   assert.equal(anotados.at(-1).nombre, 'persona');
   assert.equal(anotados.at(-1).color, null);
 
+  // Lo enseñado puede ser una persona con otro nombre: sin color si en la mirada hay
+  // una persona («Martin, color: marrón», 3-oct-2026). Si no, el color vuelve.
+  const otra = armar({ conjunto: { clases: ['nada', 'persona', 'pantalla'], predecir: async () => ({ indice: 1, nombre: otra.general, confianza: 0.95 }) } });
+  otra.general = 'pantalla';
+  for (const objeto of ['nada', 'martin']) {
+    otra.sesion.alJson({ t: 'ensenar', nombre: objeto });
+    await otra.mostrar(objeto === 'nada' ? 'nada' : 'taza', 12, rng);
+  }
+  otra.sesion.ejecutar('pasos_terminar');                 // saca el «Aprendí: martin» de la pantalla
+  otra.general = 'persona';
+  await otra.mostrar('taza', 5, rng);
+  assert.match(otra.hud().pie, /^veo: martin/);
+  assert.ok(!otra.hud().lineas.some(l => /Color/.test(l)), JSON.stringify(otra.hud()));
+  assert.equal(otra.sesion.ejecutar('que_veo').color, undefined);
+  otra.general = 'pantalla';
+  await otra.mostrar('taza', 5, rng);
+  assert.ok(otra.hud().lineas.includes('Color: rojo'), JSON.stringify(otra.hud()));
+
   // Un nombre largo no se come el porcentaje: se acorta el rótulo.
   nombre = 'reproductor mp3';
   await mostrar('taza', 5, rng);

@@ -26,18 +26,26 @@
 //     {t:"guia_local", consulta}   cargar una guía guardada en guias/ (sin LLM, sin internet)
 //     {t:"distancia", mm}          lo que mide el sensor láser (VL53L1X), unas veces por segundo; 0 = no ve nada
 //     {t:"evaluar", acierto, real} prueba real: ¿acertó lo que muestra la pantalla? y si no, qué era
+//     {t:"escena"}                 todo lo seguro del cuadro a la vez, con distancias («¿qué hay?»)
+//     {t:"corregir", nombre, caja} «eso no es una persona»: un recuadro del detector (caja en
+//                                  píxeles del cuadro); con todas:true en vez de caja, todos los de
+//                                  esa clase sin cara y fuera del centro («la ropa no es persona»)
+//     {t:"olvidar_correcciones"}   borra todo lo que esta cuenta le corrigió al detector
 //   Texto (JSON), cerebro → gafas
 //     {t:"hud", titulo, lineas, pie}   lo que se dibuja; ya viene cortado a medida
 //     {t:"callar"}                     el usuario interrumpió: vaciar el parlante
-//     {t:"estado", voz, detalle}
-//     {t:"aviso", texto}               un pedido que no se pudo hacer, y por qué
+//     {t:"aviso", texto}               un pedido que no se pudo hacer, y por qué (o que se hizo)
 //     {t:"estado", voz, modo, detalle}  cómo está la voz; modo "audio" (el LLM escucha y habla) o
 //                                       "texto" (sólo lee y escribe: transcribir y leer es de las gafas)
-//     {t:"cajas", ancho, alto, radio, mirado, lista}  el recuadro del objeto mirado (uno, o null),
-//                                       el radio de la mirada y lo crudo del detector; sólo para el emulador
+//     {t:"quien", usuario, anteojos}   con qué cuenta y qué par quedó la conexión (null: sin cuenta)
+//     {t:"cajas", ancho, alto, radio, mirado, lista, escena}  el recuadro del objeto mirado (uno, o
+//                                       null; con desconocido:true si no se parece a nada conocido),
+//                                       el radio de la mirada, lo crudo del detector y la escena;
+//                                       sólo para el panel: un OLED no los dibuja
 //     {t:"dicho", quien, texto}        transcripción, sólo para el emulador
 //     {t:"decir", texto}               leerlo en voz alta con la voz de las gafas (no la del LLM)
-//     {t:"alerta", tipo, objeto, llegada_s}  un vehículo está por llegar: pitar o vibrar YA
+//     {t:"alerta", tipo, objeto, llegada_s|peligro}  un vehículo por llegar o un animal peligroso:
+//                                       pitar o vibrar YA
 //     {t:"foto"}                       mandame una foto 0x04 lo más grande que puedas
 
 export const BIN_AUDIO_SUBE = 0x01;

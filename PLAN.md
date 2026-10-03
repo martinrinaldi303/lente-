@@ -14,7 +14,9 @@ npm install
 npm start
 ```
 
-y abrir `http://127.0.0.1:8787`. Las pruebas en frío (no necesitan el servidor):
+y abrir `http://localhost:8787` (Google sólo acepta `localhost`; las pantallas piden cuenta y
+las cuentas, MySQL; sin base anda `/emulador.html`). Node 20.12 o más. Las pruebas en frío
+(no necesitan el servidor):
 
 ```bash
 npm test
@@ -34,21 +36,27 @@ npm test
 | `src/cola_acotada.js` | Copiada de MIIA: se queda con el cuadro más nuevo |
 | `publico/` | El emulador: micrófono, cámara, parlante y un OLED de 128×64 dibujado |
 
+Ésos son los archivos del primer día. Lo que se sumó después (detector, cuentas, pantallas,
+fichas, escena, correcciones, «no lo conozco»…) está en la tabla de cada pasada, abajo.
+
 Para prender la voz: copiar `.env.example` a `.env` y poner una clave de DeepSeek
 (`DEEPSEEK_API_KEY`) o una clave de Gemini
 **nueva** (no la de MIIA: comparten cuota y la corrida sigue hasta el 12-oct).
 
 ### Probado y sin probar
 
-- **Probado:** las pruebas en frío (105 desde la décima pasada; una usa la base MySQL real); el emulador contra el servidor real, enseñando
+- **Probado:** las pruebas en frío (156 al 3-oct-2026; con MySQL prendido no se saltea
+  ninguna, y las de la base crean y borran sus propias filas); el emulador contra el servidor real, enseñando
   y reconociendo tres objetos con cuadros sintéticos; el rechazo por token y por
   origen; que el servidor no arranque abierto a la red sin token; que las redes en
   C++ aprenden una base de juguete y que el cerebro predice lo mismo que el
-  entrenador, imagen por imagen.
-- **Sin probar:** la voz (no había clave), y el micrófono y la cámara reales del
-  navegador: el panel de la app los bloquea, así que la vista de cámara se probó
-  con una cámara de mentira (un lienzo). Con la Logi C270 lo tiene que probar Martín. El SDK instalado tiene los métodos que usa `voz_live.js`, pero no se
-  hizo ninguna llamada real.
+  entrenador, imagen por imagen. Desde el 2-oct: la voz, «¿Qué es?» y leer texto contra
+  Gemini de verdad (por escrito), y la cámara de Martín (Logi C270) en Edge.
+- **Sin probar** (al 3-oct-2026): el micrófono y el parlante reales con la voz; DeepSeek
+  contra su API (la cuenta no tiene saldo); entrar con Google con una cuenta de verdad; el
+  firmware en una placa, el sensor láser y el aviso con vehículos de verdad (no hay
+  hardware). El panel de la app bloquea cámara y micrófono: ahí se prueba con una cámara
+  de mentira (un lienzo).
 
 ## Lista de compras
 
@@ -1318,6 +1326,89 @@ aprobó bajar las tres propuestas, 3-oct-2026, de madrugada).
 manda entero a Gemini (`VISION_AL_LLM=0`, a propósito); los objetos le llegan con
 `que_veo` y `que_hay`. La ropa del placar marcada «persona 53 %» se veía porque estaba
 tildado «Ver lo descartado»: ahora dice «descartado».
+
+## Decimocuarta pasada: «no lo conozco», el color y la ropa — 3-oct-2026
+
+Lo que vio Martín con la red de 129 clases: una lata de desodorante «celular 93 %», un
+marcador naranja «zanahoria», «Martin · Color: marrón» en su propia cara, y la ropa del
+placar como personas.
+
+**No sé qué es** (`src/parecido.js`). La red y el detector eligen SIEMPRE una de sus
+clases; su confianza dice cuánto le gana esa clase a las otras, no cuánto se parece a
+ella. Ahora el vector de DINOv2 de lo que se ve se compara con los ejemplos de verdad
+de la clase dicha (promedio del coseno con los 5 más parecidos): los de entrenamiento
+de la red general (una fila por foto) y 11.260 recortes de COCO de las 79 clases del
+detector, sacados de las fotos ya bajadas (`herramientas/ejemplos_del_detector.js`,
+sin persona). Si no llega, la pantalla dice «No lo conozco · Preguntame «¿qué es?» · o
+enseñámelo», `que_veo` devuelve `desconocido` (y el LLM ofrece `identificar`), el
+recuadro sale naranja, y eso no entra en la escena ni en la memoria.
+
+| Medido con fotos que nadie vio | Nombra conocidas (acierta) | Inventa en desconocidas |
+|---|---|---|
+| Red sola, confianza ≥ 0,9 | 85,8 % (95,8 %) | 15,1 % |
+| + parecido ≥ 0,5 (umbral de la red) | 81,2 % (96,4 %) | 5,9 % |
+
+Desconocidas: 2.115 fotos de las 141 categorías de Caltech-256 que la red no tiene. Los
+recortes del detector son más sucios: con 0,5 se rechazaba el 24 % de los recortes de
+COCO de su propia clase, con 0,4 el 11 %; el detector usa 0,4. La lata se parece 0,25 a
+los celulares. Probado de punta a punta con la lata en el centro: «No lo conozco».
+Cuesta una pasada de DINOv2 por el recuadro de la mirada, cada 8 cuadros si no cambia.
+
+**El color.** «Martin» es una clase que él se enseñó a la red personal; el filtro sólo
+miraba el nombre «persona». Ahora el color de un objeto se mide en SU recuadro y vale
+para él; si no, el del centro, y nunca si en la mirada hay una persona (para el
+detector, o para la red con ≥ 0,3).
+
+**La ropa.** Medido antes de tocar nada:
+- La clase «ropa» de la red no sirve: en su cuadro, una camisa salía «persona 99 %»; en
+  COCO tiraría el 1,6 % de las personas de verdad sin cara para sacar el 4 % de las falsas.
+- Pedirle más confianza a una «persona» sin cara: con 0,9 quedan el 55 % de las reales
+  y el 6 % de las falsas (500 fotos con gente y 500 sin). Pero la escena y la pantalla
+  YA piden 0,9: las de 54-89 % de su placar no se nombraban. Las que molestan son las de
+  90-96 %, y ésas no las saca ningún umbral sin perder gente.
+- Lo que sí sirve son SUS correcciones, y tenía 0: había que tocar cada recuadro. Ahora
+  hay un botón «La ropa no es persona» en Visión (y por voz, `no_es` con `todas`): de una
+  vez, todas las «personas» del cuadro sin cara y que no contienen el centro (ahí está
+  él, aunque la lata le tape la cara).
+
+## Revisión antes de subir la decimocuarta pasada — 3-oct-2026
+
+Martín pidió revisar todo el proyecto contra este PLAN y, con todo andando, subirlo.
+
+**Cómo se probó.** Las 156 pruebas en frío con MySQL prendido (ninguna salteada). El
+cerebro de verdad, con todos los modelos, por el WebSocket: escenas de COCO (celular 6 de
+15, auto 4 de 10: en línea con la octava pasada), cosas que la red no tiene (armónica,
+yo-yo, sextante: «No lo conozco»; dados: se calla), una taza («taza 99 %», con distancia
+y color), guía, páginas, lugar, «¿dónde dejé?», la escena, corregir, paquetes rotos (la
+conexión sigue), la voz y «¿Qué es?» con Gemini. Las seis pantallas y el emulador viejo en el navegador, con
+una cuenta de prueba (borrada al final) y una cámara de mentira con la armónica y la
+taza, sin errores en la consola. Lo que las pruebas anotaron en la base y en
+`estado/memoria.json` se borró: quedó como estaba.
+
+**Lo que estaba mal, y se arregló:**
+
+| Qué | Dónde |
+|---|---|
+| Una corrección que fallaba a la mitad (el detector de caras o DINOv2 tirando un error) dejaba una promesa rechazada sin dueño, y eso tumba el cerebro entero: justo lo que la undécima pasada dice que no pasa | `src/sesion.js` (`corregir`) |
+| «Olvidar las correcciones» no avisaba nada: el botón parecía no andar. Y decía «correcciónes» | `src/sesion.js` |
+| Tocar el recuadro naranja de «No lo conozco» (o el de una persona conocida, o «picaflor») guardaba una corrección de una clase que el detector no tiene: basura que nunca se usa. Ahora sólo se corrigen clases del detector, y el naranja avisa «preguntá «¿Qué es?»» | `src/sesion.js`, `publico/vision.html` |
+| Un recuadro tocado que llegaba roto se cambiaba en silencio por la «persona» más cercana al centro: se podía corregir a alguien que nadie señaló | `src/sesion.js` |
+| La corrección recortaba el ÚLTIMO cuadro que llegó con un recuadro del cuadro anterior: con la cabeza en movimiento, el recorte salía corrido. Ahora usa el cuadro en que el detector lo vio | `src/sesion.js` (`imgDetecciones`) |
+| En Visión, lo mirado desconocido decía «No lo conozco · undefined%»; la tarjeta mostraba «veo: ?» crudo; el emulador viejo, «undefined%» | `publico/vision.html`, `cliente_gafas.js`, `gafas.js` |
+| El arranque mostraba el panel en `127.0.0.1` (con eso Google no anda) | `servidor.js` |
+| `package.json` pedía Node 22 y la PC de Martín tiene Node 20 (`npm install` avisaba). Ahora 20.12 o más, y las pruebas de GitHub corren con 20 y con 22 | `package.json`, `.github/workflows/pruebas.yml` |
+| `probar_escenas.js` decía mandar cuadros grises entre escena y escena, y no los mandaba: una escena arrastraba los votos de la anterior | `herramientas/probar_escenas.js` |
+| Los README decían 67 clases, Node 22 y `127.0.0.1`, no nombraban cuentas, detector, pantallas ni «No lo conozco», faltaba YOLOS-tiny entre lo que hay que bajar, y decían «no identifica personas por la cara» sin la excepción de las que se cargaron solas con permiso. La lista de mensajes de `protocolo.js` no tenía `corregir`, `escena`, `quien` ni las cajas nuevas | `README.md`, `README.en.md`, `src/protocolo.js` |
+
+Pruebas nuevas en `pruebas/correcciones.test.js` para cada arreglo del cerebro.
+
+**Visto y dejado como está, a propósito:**
+- «La ropa no es persona» corrige TODAS las personas sin cara fuera del centro: en una
+  foto de COCO con gente de verdad lejos, corrigió 8. Es lo que hace, y por eso la
+  pantalla pregunta antes «¿en el cuadro no hay nadie más que vos?». Usarlo sólo frente
+  al placar.
+- «¿Qué es?» sobre una taza con un mastín dibujado contestó «perro, peligro medio»: el
+  modelo describió el dibujo. Es el LLM, no el código.
 
 ## Desarmar, código y matemática — bases encontradas el 1-oct-2026
 

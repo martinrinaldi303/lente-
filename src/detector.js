@@ -43,6 +43,7 @@ const NOMBRES = {
   85: 'reloj', 86: 'florero', 87: 'tijera', 88: 'oso de peluche', 89: 'secador de pelo', 90: 'cepillo dental',
 };
 export const CLASES_DEL_DETECTOR = Object.values(NOMBRES);
+export const NOMBRES_COCO = NOMBRES;     // id de categoría de COCO → nombre
 
 // El tamaño al que se le pasa el cuadro: el lado menor a `ladoMenor`, la misma
 // proporción, y los dos lados múltiplos de 16.
