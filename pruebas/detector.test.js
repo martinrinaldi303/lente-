@@ -2,7 +2,7 @@ import assert from 'node:assert/strict';
 import { test } from 'node:test';
 import jpeg from 'jpeg-js';
 import { iou } from '../herramientas/medir_detector.js';
-import { CLASES_DEL_DETECTOR, crearDetector, interpretar, tamanoDeEntrada } from '../src/detector.js';
+import { CLASES_DEL_DETECTOR, crearDetector, detectarConZoom, interpretar, tamanoDeEntrada } from '../src/detector.js';
 import { normalizar, recorteDelRecuadro } from '../src/identificar.js';
 import { focalDesdeFovDiagonal } from '../src/medir.js';
 import { BIN_JPEG, empaquetar } from '../src/protocolo.js';
@@ -141,9 +141,15 @@ test('quieto, cortado por el borde, sin alto conocido y cambio de objeto', () =>
   assert.equal(s.agregar(det('persona', 280, 200, 80, 273), W, H, 3000), null);     // a 7 px del borde: también
   // Más ancha que alta: es un busto o está sentada, no mide 1,7 m.
   assert.equal(s.agregar(det('persona', 160, 195, 480, 250), W, H, 3000), null);
-  // Un celular no tiene «alto típico»: no se mide, y se olvida lo anterior.
-  assert.equal(s.agregar(det('celular', 280, 100, 80, 200), W, H, 3500), null);
+  // Una pantalla puede medir de 30 cm a 2 m: no tiene tamaño típico, no se mide, y se
+  // olvida lo anterior.
+  assert.equal(s.agregar(det('pantalla', 280, 100, 80, 200), W, H, 3500), null);
   assert.equal(s.muestras.length, 0);
+  // Un celular sí (15 cm de largo): la distancia, sin velocidad; debajo de 1 m, de a 10 cm.
+  const cel = s.agregar(det('celular', 280, 100, 80, 200), W, H, 3600);
+  assert.deepEqual([cel.velocidadKmh, cel.llegadaS], [null, null]);
+  assert.deepEqual(renglonesDeMedida(cel), ['A ≈ 0,6 m']);
+  s.reiniciar();
   // De golpe al doble de distancia: es otro objeto, se empieza de nuevo.
   s.agregar(det('auto', 280, 100, 300, 200), W, H, 4000);
   s.agregar(det('auto', 280, 100, 300, 200), W, H, 4500);
@@ -192,7 +198,7 @@ test('con el celular en la mano junto a la cara, las gafas dicen «celular» y n
   // marcó el detector va aparte, crudo, y no se dibuja si no se pide.
   const cajas = json.filter(m => m.t === 'cajas').at(-1);
   assert.deepEqual([cajas.ancho, cajas.alto, cajas.radio], [320, 240, 53]);
-  assert.deepEqual(cajas.mirado, { nombre: 'celular', x0: 92, y0: 80, ancho: 60, alto: 112, confianza: 93, metros: undefined });
+  assert.deepEqual(cajas.mirado, { nombre: 'celular', x0: 92, y0: 80, ancho: 60, alto: 112, confianza: 93, metros: 0.5 });
   assert.deepEqual(cajas.lista.map(c => c.nombre), ['persona', 'celular']);
 
   // Se va el celular: queda la persona. Es un busto (más ancho que alto): NO se le
@@ -235,6 +241,33 @@ test('el detector manda en el centro; al costado, mandan las redes del recuadro'
   await d.mostrar(5);
   assert.equal(d.hud().pie, 'veo: -');
   assert.equal(d.json.filter(m => m.t === 'cajas').at(-1).mirado, null);
+});
+
+test('la ropa del placar: una «persona» dudosa del detector, o de las redes solas, no cuenta', async () => {
+  // La captura de Martín (3-oct-2026): ropa colgada marcada «persona 0,76» y «0,62»
+  // en la mirada, y las redes diciendo «persona» del recuadro del centro.
+  const ropa = [det('persona', 120, 70, 60, 120, 0.76), det('persona', 100, 40, 50, 90, 0.62)];
+  const { sesion, estado, json, hud, mostrar } = armar({ detecciones: ropa, clasificador: 'persona' });
+  await mostrar(6);
+  assert.equal(hud().pie, 'veo: -');
+  assert.equal(json.filter(m => m.t === 'cajas').at(-1).mirado, null);
+  assert.equal(sesion.ejecutar('que_veo').objeto, null);
+  // Él se pone delante: el detector está seguro, y ahí sí.
+  estado.detecciones = [...ropa, det('persona', 60, 20, 200, 220, 1)];
+  await mostrar(5);
+  assert.equal(hud().pie, 'creo: persona 100%');
+});
+
+test('el detector dice «pajaro» y las redes saben cuál: vale el más específico, con su recuadro', async () => {
+  const ave = det('pajaro', 110, 70, 100, 100, 0.96);
+  const a = armar({ detecciones: [ave], clasificador: 'picaflor' });
+  await a.mostrar(5);
+  assert.equal(a.hud().pie, 'creo: picaflor 95%');
+  assert.equal(a.json.filter(m => m.t === 'cajas').at(-1).mirado.nombre, 'picaflor');
+  // Si las redes dicen otra cosa que no es un pájaro, manda el detector.
+  const b = armar({ detecciones: [ave], clasificador: 'celular' });
+  await b.mostrar(5);
+  assert.equal(b.hud().pie, 'creo: pajaro 96%');
 });
 
 test('lo que el detector marca sin estar seguro vale sólo si las redes propias dicen lo mismo', async () => {
@@ -311,13 +344,13 @@ test('marca y modelo con detector: viaja el recorte del APARATO, y con sólo una
   // Hay una persona en el cuadro, pero el detector localizó el celular: se manda SU recuadro.
   const a = armar({ detecciones: [persona, celular], identificar });
   await a.mostrar(5);
-  assert.equal((await a.sesion.ejecutar('identificar_dispositivo')).ok, true);
+  assert.equal((await a.sesion.ejecutar('identificar')).ok, true);
   assert.deepEqual(pedidos, [{ pista: 'celular', caja: celular.caja }]);
 
   // Sólo una persona: no se manda nada.
   const b = armar({ detecciones: [persona], identificar });
   await b.mostrar(5);
-  const r = await b.sesion.ejecutar('identificar_dispositivo');
+  const r = await b.sesion.ejecutar('identificar');
   assert.equal(r.ok, false);
   assert.match(r.motivo, /persona/);
   assert.equal(pedidos.length, 1);
@@ -337,4 +370,49 @@ test('el detector de verdad carga y contesta', { skip: real ? false : 'no está 
 
 test('sin el modelo no hay detector y nadie se cae', async () => {
   assert.equal(await crearDetector({ ruta: 'modelos/no-existe.onnx' }), null);
+});
+
+test('el zoom en la mirada: suma lo que sólo se ve de cerca, sin lo cortado ni repetidos', async () => {
+  // Un detector de mentira: del cuadro entero (320×240) ve una persona; del centro
+  // (160×120, desde 80,60) ve un auto chico entero, un celular cortado por el borde
+  // del recorte, y la misma persona más segura.
+  const detector = {
+    async detectar(img) {
+      if (img.width === 320) return [det('persona', 100, 40, 120, 180, 0.91)];
+      assert.deepEqual([img.width, img.height], [160, 120]);
+      return [det('auto', 60, 50, 20, 12, 0.93), det('celular', 0, 40, 30, 20, 0.97), det('persona', 20, 0, 120, 118, 0.99)];
+    },
+  };
+  const img = { width: 320, height: 240, data: new Uint8Array(320 * 240 * 4) };
+  const todas = await detectarConZoom(detector, img);
+  // La persona del zoom toca el borde del recorte: queda la del cuadro entero.
+  assert.deepEqual(todas.map(d => [d.nombre, d.confianza, d.zoom ?? false]), [['auto', 0.93, true], ['persona', 0.91, false]]);
+  assert.deepEqual(todas[0].caja, { x0: 140, y0: 110, ancho: 20, alto: 12 });        // en píxeles del cuadro entero
+});
+
+test('las redes solas: de un objeto que el detector conoce y no ve, sólo si están muy seguras', async () => {
+  // Las redes dicen «notebook» 0,90 del centro y el detector no ve ninguno: no vale
+  // (la caja negra del Ryzen de Martín, 3-oct-2026).
+  const conf = (c) => ({ clases: [], predecir: async () => ({ indice: 0, nombre: c.nombre, confianza: c.confianza }) });
+  const armarCon = (nombre, confianza, detecciones = []) => {
+    const json = [];
+    const sesion = new Sesion({ enviarJson: m => json.push(m), enviarBin() {}, red: new RedObjetos(DIM, FUENTE),
+      conjunto: conf({ nombre, confianza }), detector: { detectar: async () => { await tic(); return detecciones; } } });
+    const cuadro = jpeg.encode({ ...imagen('taza', azar(72)), width: 320, height: 240 }, 80).data;
+    return { sesion, hud: () => json.filter(m => m.t === 'hud').at(-1),
+      mostrar: async (n) => { for (let i = 0; i < n; i++) { sesion.alBinario(empaquetar(BIN_JPEG, cuadro)); do { await tic(); } while (sesion.drenando); } } };
+  };
+  const negro = armarCon('notebook', 0.9);
+  await negro.mostrar(5);
+  assert.equal(negro.hud().pie, 'veo: -');
+  // Con el detector viendo un notebook en la mirada, sí.
+  const conDetector = armarCon('notebook', 0.9, [det('notebook', 100, 60, 120, 120, 0.95)]);
+  await conDetector.mostrar(5);
+  assert.equal(conDetector.hud().pie, 'creo: notebook 95%');
+  // Muy seguras (≥ 0,95), sí; un animal, o algo que el detector no conoce, también.
+  for (const [nombre, confianza, pie] of [['notebook', 0.97, 'creo: notebook 97%'], ['gato', 0.9, 'creo: gato 90%'], ['destornillador', 0.9, '~destornillador 90%']]) {
+    const s = armarCon(nombre, confianza);
+    await s.mostrar(5);
+    assert.equal(s.hud().pie, pie, nombre);
+  }
 });

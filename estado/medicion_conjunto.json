@@ -1,70 +1,70 @@
 {
-  "cuando": "2026-10-02T04:41:43.846Z",
-  "clases": 67,
-  "fotos_de_prueba": 1948,
-  "azar": 0.059034907597535935,
+  "cuando": "2026-10-03T19:33:13.160Z",
+  "clases": 129,
+  "fotos_de_prueba": 4998,
+  "azar": 0.03221288515406162,
   "filas": [
     {
       "nombre": "rasgos_v0 solo",
-      "acierto": 0.3839835728952772,
-      "margen95": 0.02159802624127404,
-      "peso": 0.01809359509152365
+      "acierto": 0.26410564225690275,
+      "margen95": 0.012222344531203053,
+      "peso": 0.006602533522492842
     },
     {
       "nombre": "rasgos_v1 solo",
-      "acierto": 0.419917864476386,
-      "margen95": 0.021917373878187024,
-      "peso": 0.02576126702492472
+      "acierto": 0.30352140856342535,
+      "margen95": 0.012746956263988874,
+      "peso": 0.00874354339710613
     },
     {
       "nombre": "dino_s solo",
-      "acierto": 0.912217659137577,
-      "margen95": 0.012566502201035999,
-      "peso": 0.6141848084737805
+      "acierto": 0.8987595038015206,
+      "margen95": 0.008362898501441729,
+      "peso": 0.6279128782064582
     },
     {
       "nombre": "todos, voto parejo",
-      "n": 1948,
-      "acierto": 0.8891170431211499,
-      "margen95": 0.013943553326541956,
+      "n": 4998,
+      "acierto": 0.8845538215286114,
+      "margen95": 0.008859513162421867,
       "umbrales": [
         {
           "umbral": 0.5,
-          "opina": 879,
-          "acierta": 851
+          "opina": 1421,
+          "acierta": 1390
         },
         {
           "umbral": 0.7,
-          "opina": 470,
-          "acierta": 462
+          "opina": 628,
+          "acierta": 624
         },
         {
           "umbral": 0.9,
-          "opina": 245,
-          "acierta": 244
+          "opina": 226,
+          "acierta": 226
         }
       ]
     },
     {
       "nombre": "todos, voto por validación",
-      "n": 1948,
-      "acierto": 0.9127310061601642,
-      "margen95": 0.012533229191230667,
+      "n": 4998,
+      "acierto": 0.8987595038015206,
+      "margen95": 0.008362898501441729,
       "umbrales": [
         {
           "umbral": 0.5,
-          "opina": 1871,
-          "acierta": 1753
+          "opina": 4723,
+          "acierta": 4403
         },
         {
           "umbral": 0.7,
-          "opina": 1791,
-          "acierta": 1700
+          "opina": 4508,
+          "acierta": 4276
         },
         {
           "umbral": 0.9,
-          "opina": 1657,
-          "acierta": 1603
+          "opina": 4294,
+          "acierta": 4121
         }
       ]
     }
@@ -72,18 +72,18 @@
   "umbrales": [
     {
       "umbral": 0.5,
-      "opina": 1871,
-      "acierta": 1753
+      "opina": 4723,
+      "acierta": 4403
     },
     {
       "umbral": 0.7,
-      "opina": 1791,
-      "acierta": 1700
+      "opina": 4508,
+      "acierta": 4276
     },
     {
       "umbral": 0.9,
-      "opina": 1657,
-      "acierta": 1603
+      "opina": 4294,
+      "acierta": 4121
     }
   ]
 }

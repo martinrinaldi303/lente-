@@ -1,0 +1,168 @@
+<!DOCTYPE html>
+<html class="dark" lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MIIA · Personas conocidas</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap"/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="tw-config.js"></script>
+<style>
+  body { overscroll-behavior: none; font-variant-numeric: tabular-nums; }
+  #video { transform: scaleX(-1); }     /* como un espejo: es más fácil girar la cara */
+  button:disabled { opacity: .45; cursor: default; }
+  .pose.lista { background: rgb(47 227 120 / .15); color: #2fe378; }
+</style>
+</head>
+<body class="bg-surface font-body-md text-body-md text-on-surface antialiased">
+<main class="pt-14 lg:pl-64 min-h-screen">
+<div class="p-space-lg flex flex-col gap-space-md">
+  <div class="flex flex-col gap-space-xxs">
+    <span class="font-label-sm text-label-sm text-secondary tracking-widest uppercase">MODULE // PERSONAS CONOCIDAS</span>
+    <h1 class="font-headline-lg text-headline-lg font-semibold text-on-surface tracking-tight">Personas conocidas</h1>
+    <p class="font-body-md text-body-md text-on-surface-variant max-w-3xl">Las gafas reconocen a una persona <b class="text-on-surface">sólo si ella misma</b> se cargó acá, con su cuenta, y le dio permiso a la tuya. A nadie más: de cualquier otra persona dicen «persona» y nada más.</p>
+  </div>
+
+  <div id="sinModelos" class="hidden rounded p-space-md bg-error-container/20 text-error font-body-sm text-body-sm">Faltan los modelos de caras en <span class="font-data-mono">modelos/caras</span>: sin ellos no se puede cargar ni reconocer a nadie.</div>
+
+  <div class="grid grid-cols-1 xl:grid-cols-12 gap-space-lg items-start">
+    <!-- Tu cara -->
+    <section class="xl:col-span-7 bg-surface-container-low rounded p-space-md flex flex-col gap-space-sm min-w-0">
+      <div class="flex items-center justify-between gap-space-sm flex-wrap">
+        <div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-primary text-[20px]" aria-hidden="true">face</span><h2 class="font-headline-sm text-headline-sm text-on-surface">Tu cara</h2></div>
+        <span id="estadoCara" class="font-data-mono text-data-mono px-1.5 py-0.5 rounded bg-surface-container-high text-outline">—</span>
+      </div>
+      <label class="flex items-start gap-space-sm p-space-sm rounded bg-surface-container font-body-sm text-body-sm text-on-surface-variant">
+        <input id="acepto" type="checkbox" class="mt-0.5 accent-[#2fe378]"/>
+        <span>Soy <b id="yo" class="text-on-surface">yo</b> quien está frente a la cámara, y quiero que me reconozcan las gafas de las cuentas que elija abajo. Se guardan 128 números por foto, no la foto, y los borro cuando quiera.</span>
+      </label>
+      <div class="relative w-full max-w-md aspect-[4/3] rounded bg-surface overflow-hidden self-center">
+        <video id="video" class="absolute inset-0 w-full h-full object-cover" muted playsinline></video>
+        <div id="sinCamara" class="absolute inset-0 flex flex-col items-center justify-center gap-space-sm p-space-md text-center bg-surface-container-lowest">
+          <span class="material-symbols-outlined text-outline text-[28px]" aria-hidden="true">videocam_off</span>
+          <span class="font-body-sm text-body-sm text-outline">Tildá que sos vos y prendé la cámara.</span>
+          <button id="prender" type="button" disabled class="h-9 px-space-lg rounded bg-primary-container text-on-primary-container font-label-md text-label-md font-semibold">Prender la cámara</button>
+        </div>
+      </div>
+      <div class="grid grid-cols-3 gap-space-xs font-label-md text-label-md text-center">
+        <div class="pose p-space-xs rounded bg-surface-container text-outline" data-pose="frente">De frente<br/><span class="font-data-mono" data-n>0</span></div>
+        <div class="pose p-space-xs rounded bg-surface-container text-outline" data-pose="izquierda">Un costado<br/><span class="font-data-mono" data-n>0</span></div>
+        <div class="pose p-space-xs rounded bg-surface-container text-outline" data-pose="derecha">El otro costado<br/><span class="font-data-mono" data-n>0</span></div>
+      </div>
+      <p id="indicacion" class="font-body-sm text-body-sm text-on-surface" aria-live="polite">Hace falta una foto de frente y una de cada costado (girá un poco la cara): así se sabe que estás vos, de verdad, frente a la cámara.</p>
+      <div class="flex flex-wrap items-center gap-space-xs">
+        <button id="sacar" type="button" disabled class="h-8 px-space-md rounded bg-primary-container text-on-primary-container font-label-md text-label-md font-semibold flex items-center gap-1"><span class="material-symbols-outlined text-[16px]" aria-hidden="true">photo_camera</span>Sacar foto</button>
+        <button id="borrarCara" type="button" class="h-8 px-space-sm rounded bg-error-container/20 hover:bg-error-container/35 text-error font-label-sm text-label-sm flex items-center gap-1"><span class="material-symbols-outlined text-[15px]" aria-hidden="true">delete</span>Borrar mi cara y todos los permisos</button>
+      </div>
+    </section>
+
+    <div class="xl:col-span-5 flex flex-col gap-space-lg min-w-0">
+      <!-- A quién le diste permiso -->
+      <section class="bg-surface-container-low rounded p-space-md flex flex-col gap-space-sm">
+        <div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-tertiary text-[20px]" aria-hidden="true">key</span><h2 class="font-headline-sm text-headline-sm text-on-surface">Quién te puede reconocer</h2></div>
+        <form id="fPermiso" class="flex items-center gap-space-xs">
+          <input id="correo" type="email" class="flex-1 min-w-0 h-8 bg-surface-container-lowest px-space-sm rounded text-on-surface placeholder:text-outline-variant focus:outline-none" placeholder="el correo de su cuenta" aria-label="Correo de la cuenta que te puede reconocer"/>
+          <button id="dar" type="submit" disabled class="h-8 px-space-sm rounded bg-tertiary/15 text-tertiary font-label-sm text-label-sm font-semibold">Dar permiso</button>
+        </form>
+        <ul id="permisos" class="flex flex-col gap-space-xs"></ul>
+      </section>
+
+      <!-- A quiénes reconocen tus gafas -->
+      <section class="bg-surface-container-low rounded p-space-md flex flex-col gap-space-sm">
+        <div class="flex items-center gap-space-sm"><span class="material-symbols-outlined text-secondary text-[20px]" aria-hidden="true">group</span><h2 class="font-headline-sm text-headline-sm text-on-surface">A quiénes reconocen tus gafas</h2></div>
+        <ul id="conocidos" class="flex flex-col gap-space-xs"></ul>
+        <p class="font-body-sm text-body-sm text-outline">¿Un amigo quiere que tus gafas lo reconozcan? Que entre con <b>su</b> cuenta (en esta compu, en una ventana privada), se cargue en «Tu cara» y ponga tu correo. Lo puede sacar cuando quiera.</p>
+      </section>
+    </div>
+  </div>
+</div>
+</main>
+<script src="shell.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const NOMBRE_POSE = { frente: 'de frente', izquierda: 'de un costado', derecha: 'del otro costado' };
+let flujo = null, estado = null;
+
+function fila(texto, detalle, boton, accion) {
+  const li = document.createElement('li');
+  li.className = 'flex items-center justify-between gap-space-sm p-space-xs rounded bg-surface-container';
+  const izq = document.createElement('div'); izq.className = 'flex flex-col min-w-0';
+  izq.append(Object.assign(document.createElement('span'), { className: 'font-label-md text-label-md text-on-surface truncate', textContent: texto }),
+             Object.assign(document.createElement('span'), { className: 'font-data-mono text-data-mono text-outline truncate', textContent: detalle }));
+  const b = Object.assign(document.createElement('button'), { type: 'button', className: 'h-7 px-space-sm rounded bg-surface-container-high hover:bg-error-container/30 text-on-surface-variant font-label-sm text-label-sm shrink-0', textContent: boton });
+  b.onclick = accion;
+  li.append(izq, b);
+  return li;
+}
+const vacio = (t) => Object.assign(document.createElement('li'), { className: 'font-body-sm text-body-sm text-outline', textContent: t });
+const desde = (f) => new Date(f).toLocaleDateString('es-AR');
+
+function pintar(r) {
+  estado = r;
+  $('sinModelos').classList.toggle('hidden', r.disponible !== false);
+  for (const el of document.querySelectorAll('.pose')) {
+    const n = r.poses[el.dataset.pose] ?? 0;
+    el.querySelector('[data-n]').textContent = n ? `✓ ${n}` : '0';
+    el.classList.toggle('lista', n > 0);
+  }
+  $('estadoCara').textContent = r.completa ? 'CARGADA' : r.total ? `${r.total} FOTO${r.total === 1 ? '' : 'S'} · FALTAN POSES` : 'SIN CARGAR';
+  $('estadoCara').className = `font-data-mono text-data-mono px-1.5 py-0.5 rounded ${r.completa ? 'bg-tertiary/10 text-tertiary' : 'bg-surface-container-high text-outline'}`;
+  const faltan = Object.keys(NOMBRE_POSE).filter(p => !r.poses[p]);
+  $('indicacion').textContent = r.completa
+    ? 'Listo: ya podés darle permiso a otra cuenta. Más fotos (hasta 3 por pose) ayudan con luz distinta.'
+    : `Falta una foto ${faltan.map(p => NOMBRE_POSE[p]).join(' y una ')}. Para los costados, girá un poco la cara.`;
+  $('dar').disabled = !r.completa;
+  $('correo').placeholder = r.completa ? 'el correo de su cuenta' : 'primero cargá tu cara';
+  $('permisos').replaceChildren(...(r.permisos.length ? r.permisos.map(p => fila(p.nombre, `${p.correo} · desde ${desde(p.desde)}`, 'Sacar permiso', () => quitar(p))) : [vacio('Nadie todavía.')]));
+  $('conocidos').replaceChildren(...(r.conocidos.length ? r.conocidos.map(c => fila(c.nombre, `te dio permiso el ${desde(c.desde)}`, 'Dejar de reconocer', () => dejar(c))) : [vacio('Nadie te dio permiso todavía.')]));
+}
+
+async function cargar() { try { pintar(await App.api('GET', 'conocidos')); } catch (e) { App.avisar(e.message, 'error'); } }
+
+$('acepto').onchange = () => { $('prender').disabled = !$('acepto').checked; $('sacar').disabled = !$('acepto').checked || !flujo; };
+$('prender').onclick = async () => {
+  try {
+    flujo = await navigator.mediaDevices.getUserMedia({ video: { width: 640, height: 480 } });
+    $('video').srcObject = flujo; await $('video').play();
+    $('sinCamara').classList.add('hidden');
+    $('sacar').disabled = !$('acepto').checked;
+  } catch (e) { App.avisar(`No se pudo prender la cámara: ${e.message}`, 'error'); }
+};
+$('sacar').onclick = async () => {
+  if (!$('acepto').checked) return App.avisar('Primero tildá que sos vos.');
+  const v = $('video'), l = document.createElement('canvas');
+  l.width = v.videoWidth; l.height = v.videoHeight;
+  l.getContext('2d').drawImage(v, 0, 0);                  // la foto va sin espejar
+  $('sacar').disabled = true;
+  try {
+    const r = await App.api('POST', 'conocidos/foto', { imagen: l.toDataURL('image/jpeg', 0.9) });
+    pintar(r);
+    App.avisar(`Foto ${NOMBRE_POSE[r.pose]} guardada`, 'ok');
+  } catch (e) { App.avisar(e.message, 'error'); }
+  finally { $('sacar').disabled = false; }
+};
+$('borrarCara').onclick = async () => {
+  if (!confirm('¿Borrar tu cara y sacarle el permiso a todas las cuentas? Las gafas dejan de reconocerte.')) return;
+  try { pintar(await App.api('DELETE', 'conocidos/cara')); App.avisar('Listo: tu cara se borró', 'ok'); } catch (e) { App.avisar(e.message, 'error'); }
+};
+$('fPermiso').onsubmit = async (e) => {
+  e.preventDefault();
+  const correo = $('correo').value.trim();
+  if (!correo) return App.avisar('Escribí el correo de la cuenta.');
+  try { const r = await App.api('POST', 'conocidos/permisos', { correo }); pintar(r); $('correo').value = ''; App.avisar(`Listo: las gafas de ${r.agregado} te van a reconocer`, 'ok'); }
+  catch (err) { App.avisar(err.message, 'error'); }
+};
+async function quitar(p) {
+  try { pintar(await App.api('DELETE', `conocidos/permisos/${p.id}`)); App.avisar(`${p.nombre} ya no te reconoce`, 'ok'); } catch (e) { App.avisar(e.message, 'error'); }
+}
+async function dejar(c) {
+  if (!confirm(`¿Dejar de reconocer a ${c.nombre}? Para volver, tendría que darte permiso otra vez.`)) return;
+  try { pintar(await App.api('DELETE', `conocidos/reconocer/${c.id}`)); } catch (e) { App.avisar(e.message, 'error'); }
+}
+App.montar('conocidos', { subtitulo: 'Personas conocidas' }).then(({ yo }) => { if (yo?.usuario) $('yo').textContent = yo.usuario.nombre; cargar(); }).catch((e) => App.avisar(e.message, 'error'));
+</script>
+</body>
+</html>

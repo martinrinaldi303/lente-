@@ -78,7 +78,7 @@ test('identificar: marca, modelo, características y partes quedan en pantalla',
   const { sesion, mostrar, hud } = armar({ identificar });
   await mostrar();
 
-  const r = await sesion.ejecutar('identificar_dispositivo');
+  const r = await sesion.ejecutar('identificar');
   assert.equal(r.ok, true);
   assert.equal(r.modelo, 'Moto G54');
   assert.deepEqual(pedidos.map(p => p.pista), ['celular']);
@@ -97,20 +97,20 @@ test('identificar NUNCA manda una persona al LLM', async () => {
   // 1 · La red reconoce una persona con confianza: se niega.
   const a = armar({ dice: 'persona', confianza: 0.9, identificar });
   await a.mostrar();
-  assert.equal((await a.sesion.ejecutar('identificar_dispositivo')).ok, false);
+  assert.equal((await a.sesion.ejecutar('identificar')).ok, false);
 
   // 2 · Apenas sospecha (0,35: no llega a mostrarse en pantalla): también se niega.
   const b = armar({ dice: 'persona', confianza: 0.35, identificar });
   await b.mostrar();
   assert.equal(b.hud().pie, 'veo: -');
-  const r = await b.sesion.ejecutar('identificar_dispositivo');
+  const r = await b.sesion.ejecutar('identificar');
   assert.equal(r.ok, false);
   assert.match(r.motivo, /persona/);
 
   // 3 · Por el botón de las gafas: mismo resultado, y avisa.
   b.sesion.alJson({ t: 'identificar' });
   await tic(); await tic();
-  assert.match(b.avisos().at(-1), /sólo identifico aparatos/);
+  assert.match(b.avisos().at(-1), /nunca personas/);
 
   assert.equal(llamadas, 0);
 });
@@ -118,19 +118,19 @@ test('identificar NUNCA manda una persona al LLM', async () => {
 test('identificar avisa si falta la clave, la cámara o el aparato', async () => {
   const sinClave = armar();
   await sinClave.mostrar();
-  assert.match((await sinClave.sesion.ejecutar('identificar_dispositivo')).motivo, /clave del LLM/);
+  assert.match((await sinClave.sesion.ejecutar('identificar')).motivo, /clave del LLM/);
 
   const sinCamara = armar({ identificar: async () => null });
-  assert.match((await sinCamara.sesion.ejecutar('identificar_dispositivo')).motivo, /prendé la cámara/);
+  assert.match((await sinCamara.sesion.ejecutar('identificar')).motivo, /prendé la cámara/);
 
   const sinAparato = armar({ identificar: async () => null });
   await sinAparato.mostrar();
-  assert.match((await sinAparato.sesion.ejecutar('identificar_dispositivo')).motivo, /No veo ningún aparato/);
+  assert.match((await sinAparato.sesion.ejecutar('identificar')).motivo, /No veo ningún aparato/);
   assert.equal(sinAparato.hud().titulo, 'celular 1/4');           // la pantalla vuelve a lo que estaba
 
   const roto = armar({ identificar: async () => { throw new Error('429 cuota agotada'); } });
   await roto.mostrar();
-  assert.match((await roto.sesion.ejecutar('identificar_dispositivo')).motivo, /No pude consultar el modelo: 429/);
+  assert.match((await roto.sesion.ejecutar('identificar')).motivo, /No pude consultar el modelo: 429/);
 });
 
 test('al LLM le va sólo el recuadro, y su respuesta se sanea', async () => {
@@ -189,7 +189,7 @@ test('leer texto también prueba con el modelo de reserva, y el motivo se puede 
 
 test('el LLM de voz tiene la herramienta de aparatos y ninguna de personas', () => {
   const nombres = HERRAMIENTAS.map(h => h.name);
-  assert.ok(nombres.includes('identificar_dispositivo'));
+  assert.ok(nombres.includes('identificar'));
   assert.ok(!nombres.some(n => /persona|cara|rostro|face/i.test(n)));
 });
 

@@ -11,7 +11,7 @@
 // fotos son de catálogo; las de COCO son de casas y calles reales, así que de paso
 // se suman recortes a clases que ya existían.
 //
-// Sólo entran categorías de OBJETOS y «person» como categoría. COCO no trae nombres
+// Sólo entran categorías de OBJETOS, de animales y «person» como categoría. COCO no trae nombres
 // de nadie y acá no se guarda nada más que el recorte.
 
 import jpeg from 'jpeg-js';
@@ -40,6 +40,21 @@ export const CATEGORIAS_COCO = {
   'train': 'tren',
   'airplane': 'avion',
   'boat': 'barco',
+  // Animales (3-oct-2026). Los mismos que marca el detector, para que la red y el
+  // detector los llamen igual. «bird» NO entra: en COCO hay patos, gansos y cisnes
+  // marcados «bird», y en Caltech-256 cada uno es su propia clase; mezclados, la red
+  // aprendería que un pato es «pato» y «pájaro» a la vez. El pájaro lo da el detector.
+  'cat': 'gato',
+  'dog': 'perro',
+  'horse': 'caballo',
+  'sheep': 'oveja',
+  'cow': 'vaca',
+  'elephant': 'elefante',
+  'bear': 'oso',
+  'zebra': 'cebra',
+  'giraffe': 'jirafa',
+  // Para que un peluche no salga «oso, peligro muy alto».
+  'teddy bear': 'oso_de_peluche',
 };
 
 const LADO_MINIMO  = 64;     // recortes más chicos son un manchón: no enseñan nada

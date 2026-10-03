@@ -77,6 +77,53 @@ export function interpretar(logits, cajas, nClases, anchoImg, altoImg, umbral) {
 }
 
 // Devuelve el detector, o null si falta el modelo o onnxruntime-node.
+// ── El zoom en la mirada ─────────────────────────────────────────────────────
+// Martín pidió (3-oct-2026) que las gafas vean lo más lejos posible. YOLOS-tiny casi
+// no encuentra lo que ocupa menos de ~48 px de alto, y achicar menos el cuadro rinde
+// poco: con 480 de lado en vez de 384, de lo que mide 24-48 px encuentra 23 % en vez
+// de 18 %, y tarda casi el doble (187 ms contra 101; 250 fotos de COCO a 640×480).
+// Lo que sí rinde es mirar DOS veces: el cuadro entero, y el centro (la mitad del
+// ancho y del alto, donde está la mirada) por separado, con todo su detalle. Medido
+// en 206 fotos de COCO, para lo que cae en el centro, con el mismo costo por pasada:
+//   alto en el cuadro entero     6-12 px   12-24 px   24-48 px   48+ px
+//   sólo el cuadro entero           0 %       6 %       27 %      60 %
+//   + zoom, cámara de más detalle  13 %      29 %       46 %      78 %
+//   + zoom, la misma cámara         7 %      17 %       33 %      63 %
+// Como el tamaño aparente baja con la distancia, es ver lo mismo hasta el doble de
+// lejos, pero sólo en la mirada: el resto del cuadro sigue como antes.
+const FRACCION_ZOOM = 0.5;
+
+function recortar(img, r) {
+  const data = new Uint8Array(r.ancho * r.alto * 4);
+  for (let y = 0; y < r.alto; y++) data.set(img.data.subarray(((r.y0 + y) * img.width + r.x0) * 4, ((r.y0 + y) * img.width + r.x0 + r.ancho) * 4), y * r.ancho * 4);
+  return { width: r.ancho, height: r.alto, data };
+}
+
+function iouCajas(a, b) {
+  const w = Math.min(a.x0 + a.ancho, b.x0 + b.ancho) - Math.max(a.x0, b.x0), h = Math.min(a.y0 + a.alto, b.y0 + b.alto) - Math.max(a.y0, b.y0);
+  return w > 0 && h > 0 ? (w * h) / (a.ancho * a.alto + b.ancho * b.alto - w * h) : 0;
+}
+
+// Lo del cuadro entero y lo del zoom, juntos y en píxeles del cuadro. Lo que el zoom ve
+// cortado por el borde del recorte no se usa (está a medias: el cuadro entero lo ve
+// mejor), y si los dos vieron la misma cosa queda la más segura.
+export async function detectarConZoom(detector, img, { fraccion = FRACCION_ZOOM } = {}) {
+  const entero = await detector.detectar(img);
+  const r = { ancho: Math.round(img.width * fraccion), alto: Math.round(img.height * fraccion) };
+  r.x0 = Math.round((img.width - r.ancho) / 2); r.y0 = Math.round((img.height - r.alto) / 2);
+  const borde = 2;
+  const delZoom = (await detector.detectar(recortar(img, r)))
+    .filter(d => d.caja.x0 > borde && d.caja.y0 > borde && d.caja.x0 + d.caja.ancho < r.ancho - borde && d.caja.y0 + d.caja.alto < r.alto - borde)
+    .map(d => ({ ...d, caja: { ...d.caja, x0: d.caja.x0 + r.x0, y0: d.caja.y0 + r.y0 }, zoom: true }));
+  const todas = entero.slice();
+  for (const d of delZoom) {
+    const k = todas.findIndex(e => e.nombre === d.nombre && iouCajas(e.caja, d.caja) > 0.5);
+    if (k < 0) todas.push(d);
+    else if (d.confianza > todas[k].confianza) todas[k] = d;
+  }
+  return todas.sort((a, b) => b.confianza - a.confianza);
+}
+
 // `ladoMenor`: 384 tarda ~115 ms por cuadro en el Ryzen 5 5600GT; 480, ~205 ms.
 export async function crearDetector({ ruta = RUTA_MODELO, ladoMenor = 384, umbral = 0.5 } = {}) {
   if (!existsSync(ruta)) return null;

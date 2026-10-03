@@ -28,7 +28,7 @@ export async function conectarVoz({ apiKey, modelo, herramientas, ejecutar,
 
     const llamadas = m.toolCall?.functionCalls ?? [];
     if (llamadas.length) {
-      // Una herramienta puede tardar (identificar_dispositivo consulta a otro modelo).
+      // Una herramienta puede tardar (identificar consulta a otro modelo).
       const functionResponses = await Promise.all(llamadas.map(async fc => {
         let response;
         try { response = await ejecutar(fc.name, fc.args ?? {}); }

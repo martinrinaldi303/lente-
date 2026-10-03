@@ -55,6 +55,7 @@ static const int PIN_MIC_CLK = 42, PIN_MIC_DATOS = 41;
 // ── El protocolo (src/protocolo.js) ─────────────────────────────────────────
 static const uint8_t BIN_AUDIO_SUBE = 0x01, BIN_JPEG = 0x02, BIN_AUDIO_BAJA = 0x03, BIN_FOTO = 0x04;
 static const size_t MAX_JPEG = 300 * 1024, MAX_FOTO = 480 * 1024;
+static const framesize_t TAMANO_CUADRO = FRAMESIZE_XGA;   // 1024×768 (ver iniciarCamara)
 
 static const uint32_t MS_ENTRE_CUADROS = 500;      // 2 cuadros por segundo, como el emulador
 static const uint32_t MS_ENTRE_DISTANCIAS = 250;   // el cerebro da por vieja una lectura a los 1,5 s
@@ -174,7 +175,9 @@ bool iniciarCamara() {
   c.xclk_freq_hz = 20000000;
   c.pixel_format = PIXFORMAT_JPEG;
   // Se arranca con el tamaño MÁS GRANDE para que los búferes alcancen para la foto de
-  // leer texto, y enseguida se baja a 640×480 para los cuadros de siempre.
+  // leer texto, y enseguida se baja al de los cuadros de siempre: 1024×768 (antes
+  // 640×480). El cerebro mira el centro con zoom, y ahí más detalle es ver más lejos
+  // (src/detector.js). A 2 cuadros por segundo son unos 150 KB/s por WiFi.
   c.frame_size = FRAMESIZE_UXGA;
   c.jpeg_quality = 12;
   c.fb_count = 2;
@@ -182,7 +185,7 @@ bool iniciarCamara() {
   c.grab_mode = CAMERA_GRAB_LATEST;
   if (esp_camera_init(&c) != ESP_OK) return false;
   sensor_t* s = esp_camera_sensor_get();
-  s->set_framesize(s, FRAMESIZE_VGA);
+  s->set_framesize(s, TAMANO_CUADRO);
   return true;
 }
 
@@ -209,7 +212,7 @@ void mandarFoto() {
   camera_fb_t* fb = esp_camera_fb_get();
   if (fb && fb->format == PIXFORMAT_JPEG && fb->len <= MAX_FOTO) enviarBin(BIN_FOTO, fb->buf, fb->len);
   if (fb) esp_camera_fb_return(fb);
-  s->set_framesize(s, FRAMESIZE_VGA);
+  s->set_framesize(s, TAMANO_CUADRO);
   descartarCuadros(1);
 }
 

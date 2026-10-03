@@ -115,7 +115,15 @@ export class Memoria {
   // Los últimos vistos, del más reciente al más viejo.
   recientes(cuantos = 10) {
     return [...this.vistos.values()].reverse().slice(0, cuantos)
-      .map(v => ({ objeto: v.nombre, hace: haceCuanto(this.reloj() - v.cuando), lugar: v.lugar }));
+      .map(v => ({ objeto: v.nombre, hace: haceCuanto(this.reloj() - v.cuando), lugar: v.lugar,
+                   cuando: new Date(v.cuando).toISOString(), confianza: v.confianza }));
+  }
+
+  // Olvidar todo lo visto (lo pide el usuario desde el panel). El lugar se mantiene.
+  vaciar() {
+    this.vistos.clear();
+    this.cambios = true;
+    this.guardar();
   }
 
   // Al disco, de una vez: se escribe un archivo aparte y se renombra, así un corte a la

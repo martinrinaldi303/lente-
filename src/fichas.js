@@ -11,6 +11,13 @@
 //
 // Cada renglón entra en 21 columnas (lo vigila pruebas/sesion.test.js). La clave es
 // el nombre de la clase tal como figura en herramientas/categorias.json.
+//
+// Los animales (características, peligro y qué hacer) están en fichas_animales.js, y
+// las piezas de computadoras y celulares (función, diseño y características) en
+// fichas_piezas.js. paginasDe() y fichaDe() buscan en las tres.
+
+import { ANIMALES, normalizarNombre, renglonDePeligro } from './fichas_animales.js';
+import { PIEZAS } from './fichas_piezas.js';
 
 export const FICHAS = {
   'celular': {
@@ -185,17 +192,108 @@ export const FICHAS = {
     datos:  ['Apaga fuego', 'Mirar el manómetro'],
     partes: ['Precinto', 'Palanca', 'Manómetro', 'Manguera', 'Cilindro'],
   },
+  // El detector y la red general lo tienen para que un peluche no salga «oso».
+  'oso de peluche': {
+    datos:  ['Juguete de tela', 'No es un animal'],
+    partes: ['Tela', 'Relleno', 'Ojos y costuras'],
+  },
 };
 
-const PARTES_POR_PAGINA = 3;
+const DE_A = 3;
+const deATres = (lista) => { const out = []; for (let k = 0; k < lista.length; k += DE_A) out.push(lista.slice(k, k + DE_A)); return out; };
 
-// Las páginas de una ficha: la primera con los datos (y lo medido, que agrega quien
-// llama), las siguientes con las partes de a tres. null si la clase no tiene ficha.
+// Todas las fichas por nombre normalizado, con sus alias: «Memoria RAM», «ram» y
+// «memoria» llevan a la misma. Lo que se enseña tiene el nombre que el usuario eligió.
+const INDICE = new Map();
+for (const [tipo, tabla] of [['aparato', FICHAS], ['animal', ANIMALES], ['pieza', PIEZAS]])
+  for (const [clave, f] of Object.entries(tabla))
+    for (const n of [clave, ...(f.alias ?? [])]) if (!INDICE.has(normalizarNombre(n))) INDICE.set(normalizarNombre(n), { tipo, clave, f });
+
+// { tipo: 'aparato' | 'animal' | 'pieza', clave, f } o null.
+export function fichaDe(nombre) {
+  return INDICE.get(normalizarNombre(nombre)) ?? null;
+}
+
+// Las páginas de una ficha. null si no hay ficha con ese nombre.
+//   aparato → los datos (y lo medido, que agrega quien llama), y las partes de a tres.
+//   animal  → el peligro y lo primero que hay que hacer, siempre arriba (`fijas`: lo
+//             medido no las empuja fuera de la pantalla); después qué hacer y cómo es.
+//   pieza   → para qué sirve (con el aviso arriba, si tiene), cómo es y qué mirar.
 export function paginasDe(nombre) {
-  const f = FICHAS[nombre];
-  if (!f) return null;
-  const paginas = [{ titulo: nombre, lineas: f.datos.slice() }];
-  for (let k = 0; k < f.partes.length; k += PARTES_POR_PAGINA)
-    paginas.push({ titulo: 'Partes', lineas: f.partes.slice(k, k + PARTES_POR_PAGINA) });
-  return paginas;
+  const ficha = fichaDe(nombre);
+  if (!ficha) return null;
+  const { tipo, f } = ficha;
+  if (tipo === 'animal') return [
+    { titulo: nombre, fijas: [renglonDePeligro(f.peligro), f.hacer[0]], lineas: [f.tipo] },
+    ...deATres(f.hacer.slice(1)).map(lineas => ({ titulo: 'Qué hacer', lineas })),
+    ...deATres(f.rasgos).map(lineas => ({ titulo: 'Cómo es', lineas })),
+  ];
+  if (tipo === 'pieza') return [
+    { titulo: nombre, fijas: f.aviso ? [f.aviso] : [], lineas: f.funcion.slice() },
+    ...deATres(f.diseno).map(lineas => ({ titulo: 'Diseño', lineas })),
+    ...deATres(f.caracteristicas).map(lineas => ({ titulo: 'Características', lineas })),
+  ];
+  return [
+    { titulo: nombre, fijas: [], lineas: f.datos.slice() },
+    ...deATres(f.partes).map(lineas => ({ titulo: 'Partes', lineas })),
+  ];
+}
+
+// La ficha para mostrar como una guía (pantalla con «◀ ▶»): un título para todas, así
+// que cada sección arranca con su nombre como renglón («Qué hacer:»).
+export function paginasSueltas(nombre) {
+  const paginas = paginasDe(nombre);
+  if (!paginas) return null;
+  const [primera, ...resto] = paginas, secciones = new Map();
+  for (const p of resto) secciones.set(p.titulo, [...(secciones.get(p.titulo) ?? []), ...p.lineas]);
+  return [[...primera.fijas, ...primera.lineas].slice(0, DE_A), ...[...secciones].flatMap(([t, l]) => deATres([`${t}:`, ...l]))];
+}
+
+// Qué es, en un renglón, todo lo que reconocen la red general y el detector y no
+// tiene ficha propia. De «persona» se dice eso y nada más: nada de cómo es.
+export const DEFINICIONES = {
+  'persona': 'Ser humano',
+  'taza': 'Recipiente con asa', 'botella': 'Envase de líquidos', 'copa': 'Vaso con pie', 'lata': 'Envase de metal',
+  'tetera': 'Calienta agua', 'bol': 'Recipiente hondo', 'sarten': 'Para freír',
+  'tenedor': 'Cubierto con dientes', 'cuchillo': 'Cubierto con filo', 'cuchara': 'Cubierto cóncavo',
+  'destornillador': 'Gira tornillos', 'navaja': 'Cuchillo plegable', 'pinza': 'Agarra y aprieta',
+  'tijera': 'Corta con dos hojas', 'escalera': 'Para subir y bajar', 'torno': 'Máquina que tornea',
+  'tripode': 'Soporte de tres patas', 'jeringa': 'Inyecta líquidos', 'clip': 'Sujeta papeles',
+  'picaporte': 'Abre la puerta', 'rueda': 'Neumático', 'moneda': 'Dinero de metal',
+  'anteojos': 'Corrigen la vista', 'mochila': 'Bolso de espalda', 'cartera': 'Bolso de mano',
+  'valija': 'Equipaje de viaje', 'paraguas': 'Protege de la lluvia', 'zapatilla': 'Calzado deportivo',
+  'remera': 'Prenda de algodón', 'corbata': 'Prenda del cuello', 'ropa': 'Prendas de vestir',
+  'cable': 'Lleva energía o datos', 'webcam': 'Cámara de la compu',
+  'semaforo': 'Ordena el tránsito', 'hidrante': 'Agua para bomberos', 'cartel de pare': 'Obliga a frenar',
+  'parquimetro': 'Cobra estacionamiento', 'banco': 'Asiento largo',
+  'frisbee': 'Disco para lanzar', 'esquis': 'Tablas para nieve', 'snowboard': 'Tabla para nieve',
+  'pelota': 'Para jugar', 'barrilete': 'Vuela con el viento', 'bate': 'Palo de béisbol',
+  'guante': 'Guante de béisbol', 'skate': 'Tabla con ruedas', 'tabla de surf': 'Tabla para olas',
+  'raqueta': 'Para tenis o pádel',
+  'banana': 'Fruta tropical', 'manzana': 'Fruta de árbol', 'naranja': 'Fruta cítrica',
+  'brocoli': 'Verdura verde', 'zanahoria': 'Raíz comestible', 'sandwich': 'Pan con relleno',
+  'pancho': 'Pan con salchicha', 'pizza': 'Masa con salsa', 'dona': 'Masa frita dulce', 'torta': 'Masa dulce horneada',
+  'silla': 'Asiento con respaldo', 'sillon': 'Asiento acolchado', 'cama': 'Mueble para dormir',
+  'mesa': 'Mueble con tablero', 'planta': 'Ser vivo verde', 'florero': 'Vaso para flores',
+  'inodoro': 'Artefacto del baño', 'horno': 'Cocina con calor', 'pileta': 'Bacha con canilla',
+  'libro': 'Hojas encuadernadas', 'secador de pelo': 'Seca con aire', 'cepillo dental': 'Limpia los dientes',
+};
+
+// Qué es una cosa, en un renglón: lo de su ficha si tiene, o la definición de arriba.
+export function definicionDe(nombre) {
+  const ficha = fichaDe(nombre);
+  if (ficha?.tipo === 'animal') return ficha.f.tipo;
+  if (ficha?.tipo === 'pieza') return ficha.f.funcion[0];
+  if (ficha) return ficha.f.datos[0];
+  return DEFINICIONES[normalizarNombre(nombre)] ?? null;
+}
+
+// Lo mismo, para que el LLM lo cuente en voz alta.
+export function resumenDeFicha(nombre) {
+  const ficha = fichaDe(nombre);
+  if (!ficha) return null;
+  const { tipo, f } = ficha;
+  if (tipo === 'animal') return { es: 'animal', tipo_de_animal: f.tipo, peligro: f.peligro, que_hacer: f.hacer, como_es: f.rasgos };
+  if (tipo === 'pieza') return { es: 'pieza', aviso: f.aviso, funcion: f.funcion, diseno: f.diseno, caracteristicas: f.caracteristicas };
+  return { es: 'aparato', datos_del_tipo: f.datos, partes_del_tipo: f.partes };
 }

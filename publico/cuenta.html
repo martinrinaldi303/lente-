@@ -1,0 +1,165 @@
+<!doctype html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MIIA · Entrar</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500;600&display=swap">
+<link rel="stylesheet" href="panel.css">
+</head>
+<body>
+<main class="solo">
+  <section class="tarjeta" aria-labelledby="titulo">
+    <header>
+      <a class="marca" href="/vision.html">
+        <span class="logo" aria-hidden="true"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="7" width="13" height="10" rx="2"/><path d="m15 11 7-4v10l-7-4"/></svg></span>
+        <span><b>MIIA</b><span class="version">CORE</span><small>GLASSES AI HUD</small></span>
+      </a>
+      <div>
+        <h1 id="titulo" style="margin:0;font:600 18px var(--sans)">Tu cuenta de las gafas</h1>
+        <p class="ayuda">Con tu cuenta, tus anteojos usan lo que vos les enseñaste.</p>
+      </div>
+      <div class="pestanas" role="tablist">
+        <button type="button" role="tab" id="pEntrar" aria-selected="true" aria-controls="fEntrar">Entrar</button>
+        <button type="button" role="tab" id="pCrear" aria-selected="false" aria-controls="fCrear">Crear cuenta</button>
+      </div>
+    </header>
+
+    <div class="cuerpo">
+      <div id="mensaje" class="aviso" role="alert" hidden></div>
+
+      <form id="fEntrar" class="formulario" role="tabpanel" aria-labelledby="pEntrar" novalidate>
+        <div class="campo"><label for="eCorreo">Correo</label><input id="eCorreo" type="email" autocomplete="username" required></div>
+        <div class="campo"><label for="eClave">Contraseña</label><input id="eClave" type="password" autocomplete="current-password" required></div>
+        <button class="boton primario" type="submit">Entrar</button>
+      </form>
+
+      <form id="fCrear" class="formulario" role="tabpanel" aria-labelledby="pCrear" novalidate hidden>
+        <div class="campo"><label for="cNombre">Nombre</label><input id="cNombre" autocomplete="name" maxlength="60" required></div>
+        <div class="campo"><label for="cCorreo">Correo</label><input id="cCorreo" type="email" autocomplete="email" maxlength="120" required></div>
+        <div class="fila-campos">
+          <div class="campo"><label for="cClave">Contraseña <small>(8 o más)</small></label><input id="cClave" type="password" autocomplete="new-password" minlength="8" required></div>
+          <div class="campo"><label for="cClave2">Repetila</label><input id="cClave2" type="password" autocomplete="new-password" minlength="8" required></div>
+        </div>
+        <div class="campo"><label for="cEdad">Edad <small>(opcional)</small></label><input id="cEdad" type="number" inputmode="numeric" min="1" max="120"></div>
+        <button class="boton primario" type="submit">Crear cuenta</button>
+      </form>
+
+      <div id="conGoogle" class="formulario" hidden>
+        <div class="separador">o</div>
+        <div id="botonGoogle" class="boton-google" aria-label="Continuar con Google"></div>
+      </div>
+    </div>
+
+    <footer>
+      <p class="ayuda">Guardamos sólo lo tuyo: nombre, correo y, si querés, tu edad. La contraseña se guarda cifrada.</p>
+      <p class="ayuda">Las gafas no guardan datos de otras personas.</p>
+    </footer>
+  </section>
+</main>
+
+<script>
+const $ = (id) => document.getElementById(id);
+
+function mostrar(texto, tipo = 'error') {
+  const m = $('mensaje');
+  m.textContent = texto;
+  m.className = `aviso ${tipo}`;
+  m.hidden = !texto;
+}
+
+function pestana(crear) {
+  $('pEntrar').setAttribute('aria-selected', String(!crear));
+  $('pCrear').setAttribute('aria-selected', String(crear));
+  $('fEntrar').hidden = crear;
+  $('fCrear').hidden = !crear;
+  mostrar('');
+  (crear ? $('cNombre') : $('eCorreo')).focus();
+}
+$('pEntrar').onclick = () => pestana(false);
+$('pCrear').onclick = () => pestana(true);
+if (location.hash === '#crear') pestana(true);
+
+async function pedir(ruta, cuerpo) {
+  const r = await fetch(`/api/${ruta}`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(cuerpo) });
+  const datos = await r.json().catch(() => ({}));
+  if (!r.ok) throw new Error(datos.motivo || `El cerebro contestó ${r.status}`);
+  return datos;
+}
+
+async function enviar(evento, ruta, armar, boton) {
+  evento.preventDefault();
+  const cuerpo = armar();
+  if (!cuerpo) return;
+  boton.disabled = true;
+  try {
+    await pedir(ruta, cuerpo);
+    location.href = '/vision.html';
+  } catch (e) {
+    mostrar(e.message === 'Failed to fetch' ? 'No hay conexión con el cerebro: ¿está corriendo «npm start»?' : e.message);
+  } finally {
+    boton.disabled = false;
+  }
+}
+
+$('fEntrar').onsubmit = (e) => enviar(e, 'entrar', () => {
+  if (!$('eCorreo').value || !$('eClave').value) { mostrar('Completá el correo y la contraseña'); return null; }
+  return { correo: $('eCorreo').value, clave: $('eClave').value };
+}, e.submitter ?? $('fEntrar').querySelector('button'));
+
+$('fCrear').onsubmit = (e) => enviar(e, 'registro', () => {
+  if ($('cClave').value !== $('cClave2').value) { mostrar('Las dos contraseñas no son iguales'); return null; }
+  return { nombre: $('cNombre').value, correo: $('cCorreo').value, clave: $('cClave').value, edad: $('cEdad').value };
+}, e.submitter ?? $('fCrear').querySelector('button'));
+
+// «Continuar con Google»: el botón lo dibuja Google (accounts.google.com/gsi/client), y lo
+// que devuelve —una constancia firmada— va al cerebro, que la verifica antes de dejar entrar.
+// El lugar del botón aparece enseguida, con un texto: si Google no carga (sin internet,
+// o una extensión que bloquea accounts.google.com), se dice ahí mismo y no queda vacío.
+function cargarGoogle(clientId) {
+  const caja = $('botonGoogle');
+  const decir = (texto) => { caja.replaceChildren(Object.assign(document.createElement('p'), { className: 'ayuda', textContent: texto })); };
+  $('conGoogle').hidden = false;
+  decir('Cargando el botón de Google…');
+  const s = document.createElement('script');
+  s.src = 'https://accounts.google.com/gsi/client';
+  s.async = true;
+  const tarde = setTimeout(() => decir('El botón de Google no carga. Si tenés un bloqueador de anuncios, permití accounts.google.com en esta página; si no, fijate que haya internet.'), 8000);
+  s.onload = () => {
+    clearTimeout(tarde);
+    caja.replaceChildren();
+    google.accounts.id.initialize({ client_id: clientId, ux_mode: 'popup', context: 'signin', callback: alVolverDeGoogle });
+    google.accounts.id.renderButton(caja, { theme: 'filled_black', size: 'large', text: 'continue_with', shape: 'rectangular', width: 320, locale: 'es-419' });
+  };
+  s.onerror = () => { clearTimeout(tarde); decir('No se pudo cargar el botón de Google: sin internet, o una extensión lo bloquea.'); };
+  document.head.append(s);
+}
+
+async function alVolverDeGoogle({ credential }) {
+  try {
+    await pedir('google', { credencial: credential });
+    location.href = '/vision.html';
+  } catch (e) { mostrar(e.message); }
+}
+
+fetch('/api/config').then(r => r.json()).then(c => {
+  if (!c.google) return;
+  // Google sólo acepta los orígenes que se cargaron en su consola: con 127.0.0.1 el botón no anda.
+  if (location.hostname === '127.0.0.1') {
+    $('conGoogle').hidden = false;
+    $('botonGoogle').replaceChildren(Object.assign(document.createElement('a'), {
+      className: 'boton', href: `http://localhost:${location.port}${location.pathname}`, textContent: 'Para entrar con Google, abrí esta página con localhost' }));
+    return;
+  }
+  cargarGoogle(c.google);
+}).catch(() => {});
+
+// Si ya hay una sesión abierta, al panel. Si la base está apagada, se dice antes de que escriba nada.
+fetch('/api/yo').then(async (r) => {
+  if (r.ok) location.replace('/vision.html');
+  else if (r.status === 503) mostrar((await r.json().catch(() => ({}))).motivo || 'La base de datos está apagada', 'atencion');
+}).catch(() => mostrar('No hay conexión con el cerebro: ¿está corriendo «npm start»?', 'atencion'));
+</script>
+</body>
+</html>

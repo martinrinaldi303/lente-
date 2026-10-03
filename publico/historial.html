@@ -1,0 +1,231 @@
+<!DOCTYPE html>
+<html class="dark" lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MIIA · Historial</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap"/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="tw-config.js"></script>
+<style>
+  body { overscroll-behavior: none; font-variant-numeric: tabular-nums; }
+  .filtro[aria-pressed="true"] { background: #272a2f; color: #89ceff; }
+  button:disabled { opacity: .45; cursor: default; }
+</style>
+</head>
+<body class="bg-surface font-body-md text-body-md text-on-surface antialiased">
+<main class="pt-14 lg:pl-64 min-h-screen">
+<div class="p-space-lg flex flex-col gap-space-md">
+
+  <!-- Filtros -->
+  <div class="bg-surface-container-low p-space-md rounded flex flex-col lg:flex-row items-stretch lg:items-center justify-between gap-space-md">
+    <div class="flex flex-1 flex-wrap items-center gap-space-sm">
+      <div class="relative flex-1 min-w-[12rem] max-w-md">
+        <span class="material-symbols-outlined absolute left-space-sm top-1/2 -translate-y-1/2 text-[16px] text-outline" aria-hidden="true">search</span>
+        <input id="buscar" class="w-full h-7 bg-surface-container-lowest pl-8 pr-space-sm text-label-md font-label-md text-on-surface placeholder:text-outline-variant focus:outline-none rounded" placeholder="Buscar: celular, taza, auto…" aria-label="Buscar en el historial"/>
+      </div>
+      <div class="flex items-center bg-surface-container-lowest rounded p-0.5" role="group" aria-label="Cuándo">
+        <button type="button" class="filtro px-space-sm h-6 rounded text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm" data-periodo="hora" aria-pressed="false">Última hora</button>
+        <button type="button" class="filtro px-space-sm h-6 rounded text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm" data-periodo="hoy" aria-pressed="false">Hoy</button>
+        <button type="button" class="filtro px-space-sm h-6 rounded text-on-surface-variant hover:text-on-surface font-label-sm text-label-sm" data-periodo="todo" aria-pressed="true">Todo</button>
+      </div>
+      <div class="flex items-center gap-space-xs" role="group" aria-label="Confianza">
+        <span class="font-label-sm text-label-sm text-outline uppercase hidden sm:inline">Confianza:</span>
+        <button type="button" class="filtro px-space-sm h-6 rounded bg-surface-container-lowest text-on-surface font-data-mono text-data-mono flex items-center gap-1" data-min="0.9" aria-pressed="false"><span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>&gt;90%</button>
+        <button type="button" class="filtro px-space-sm h-6 rounded bg-surface-container-lowest text-on-surface font-data-mono text-data-mono flex items-center gap-1" data-min="0.95" aria-pressed="false"><span class="w-1.5 h-1.5 rounded-full bg-tertiary"></span>&gt;95%</button>
+      </div>
+    </div>
+    <div class="flex items-center gap-space-xs self-end lg:self-auto">
+      <button id="json" type="button" class="h-7 px-space-sm rounded bg-surface-container-high hover:bg-surface-bright text-on-surface font-label-sm text-label-sm flex items-center gap-1.5"><span class="material-symbols-outlined text-[15px] text-primary" aria-hidden="true">data_object</span>Exportar JSON</button>
+      <button id="csv" type="button" class="h-7 px-space-sm rounded bg-surface-container-high hover:bg-surface-bright text-on-surface font-label-sm text-label-sm flex items-center gap-1.5"><span class="material-symbols-outlined text-[15px] text-secondary" aria-hidden="true">table_chart</span>CSV</button>
+      <button id="limpiar" type="button" class="h-7 px-space-sm rounded bg-error-container/20 hover:bg-error-container/35 text-error font-label-sm text-label-sm flex items-center gap-1"><span class="material-symbols-outlined text-[15px]" aria-hidden="true">delete_sweep</span>Limpiar</button>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 xl:grid-cols-12 gap-space-md items-start">
+    <section class="xl:col-span-8 flex flex-col gap-space-sm min-w-0">
+      <div class="flex items-center justify-between px-space-xs gap-space-sm flex-wrap">
+        <div class="flex items-center gap-space-sm"><span class="w-2 h-2 rounded-full bg-tertiary animate-pulse"></span><h1 class="font-headline-sm text-headline-sm text-on-surface">Registro cronológico de detecciones</h1><span id="total" class="font-data-mono text-data-mono px-1.5 py-0.5 rounded bg-surface-container-high text-outline">—</span></div>
+        <span class="font-data-mono text-data-mono text-outline">se anota cuando CAMBIA lo reconocido, no cada cuadro</span>
+      </div>
+      <div id="lista" class="flex flex-col gap-space-xs"></div>
+      <div class="flex items-center justify-between px-space-xs font-data-mono text-data-mono text-outline">
+        <span id="paginaTexto">—</span>
+        <div class="flex items-center gap-space-xs">
+          <button id="anterior" type="button" class="h-7 px-space-sm rounded bg-surface-container-high text-on-surface">Anterior</button>
+          <button id="siguiente" type="button" class="h-7 px-space-sm rounded bg-surface-container-high text-on-surface">Siguiente</button>
+        </div>
+      </div>
+    </section>
+
+    <aside class="xl:col-span-4 flex flex-col gap-space-md min-w-0">
+      <section class="bg-surface-container-low rounded p-space-md flex flex-col gap-space-sm">
+        <div class="flex items-center justify-between"><h2 class="font-headline-sm text-headline-sm text-on-surface">Hoy</h2><span class="font-data-mono text-data-mono text-outline">DESDE LAS 00:00</span></div>
+        <div class="grid grid-cols-2 gap-space-xs">
+          <div class="p-space-sm rounded bg-surface-container flex flex-col"><span class="font-label-sm text-outline uppercase text-[10px]">Eventos</span><span id="hEventos" class="font-telemetry-metric text-telemetry-metric">—</span></div>
+          <div class="p-space-sm rounded bg-surface-container flex flex-col"><span class="font-label-sm text-outline uppercase text-[10px]">Objetos distintos</span><span id="hObjetos" class="font-telemetry-metric text-telemetry-metric text-primary">—</span></div>
+          <div class="p-space-sm rounded bg-surface-container flex flex-col"><span class="font-label-sm text-outline uppercase text-[10px]">Identificados</span><span id="hIdent" class="font-telemetry-metric text-telemetry-metric text-secondary">—</span></div>
+          <div class="p-space-sm rounded bg-surface-container flex flex-col"><span class="font-label-sm text-outline uppercase text-[10px]">Mediciones</span><span id="hMed" class="font-telemetry-metric text-telemetry-metric text-tertiary">—</span></div>
+        </div>
+        <span id="desde" class="font-data-mono text-data-mono text-outline-variant">—</span>
+      </section>
+
+      <section class="bg-surface-container-low rounded p-space-md flex flex-col gap-space-xs">
+        <div class="flex items-center justify-between"><h2 class="font-headline-sm text-headline-sm text-on-surface">Estado del sistema</h2></div>
+        <div id="estado" class="flex flex-col gap-space-xs"></div>
+      </section>
+
+      <section class="bg-surface-container-low rounded p-space-md flex flex-col gap-space-xs">
+        <h2 class="font-label-sm text-label-sm uppercase tracking-wider text-outline">Qué se guarda</h2>
+        <p class="font-body-sm text-body-sm text-on-surface-variant">El nombre de lo reconocido, la hora, la confianza, el color y con qué anteojos. Ninguna foto. Las personas aparecen sólo como «persona»: las gafas no guardan quién es nadie.</p>
+      </section>
+    </aside>
+  </div>
+</div>
+</main>
+
+<script src="shell.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const filtros = { periodo: 'todo', min: 0, q: '', pagina: 1 };
+let ultimos = { eventos: [], total: 0, por_pagina: 25 };
+
+function haceCuanto(fecha) {
+  const min = Math.floor((Date.now() - new Date(fecha).getTime()) / 60000);
+  if (min < 1) return 'recién';
+  if (min < 60) return `hace ${min} min`;
+  if (min < 48 * 60) return `hace ${Math.floor(min / 60)} h`;
+  return `hace ${Math.floor(min / 1440)} días`;
+}
+const hora = (f) => new Date(f).toLocaleTimeString('es-AR', { hour12: false });
+const fecha = (f) => new Date(f).toLocaleDateString('es-AR');
+const coma = (n, d = 1) => Number(n).toFixed(d).replace('.', ',');
+
+// Una tarjeta por evento. Todo con textContent: los nombres los pone el usuario.
+function tarjeta(ev) {
+  const h = (etq, clase = '', texto = '') => { const e = document.createElement(etq); if (clase) e.className = clase; if (texto !== '') e.textContent = texto; return e; };
+  const art = h('article', 'p-space-md rounded bg-surface-container-low hover:bg-surface-container transition-colors flex flex-col gap-space-sm');
+  const cab = h('div', 'flex items-center justify-between gap-space-sm flex-wrap');
+  const izq = h('div', 'flex items-center gap-space-sm flex-wrap min-w-0');
+  izq.append(h('span', 'px-space-xs py-0.5 rounded bg-surface-container-lowest font-data-mono text-data-mono text-primary font-semibold', hora(ev.cuando)),
+             h('span', 'font-data-mono text-data-mono text-outline-variant', `${haceCuanto(ev.cuando)} · ${fecha(ev.cuando)}`));
+  const titulo = ev.tipo === 'identificacion' ? [ev.marca, ev.modelo].filter(Boolean).join(' ') || ev.nombre : ev.nombre;
+  // Mayúscula sólo en la primera letra: «iPhone» tiene que seguir siendo «iPhone».
+  izq.append(h('span', 'font-headline-md text-headline-md text-on-surface font-semibold', ev.tipo === 'identificacion' ? titulo : titulo.charAt(0).toUpperCase() + titulo.slice(1)));
+  const etiqueta = ev.tipo === 'identificacion' ? ['Identificado', 'bg-secondary-container/20 text-secondary-fixed']
+    : ev.tipo === 'medicion' ? ['Medición', 'bg-tertiary/10 text-tertiary']
+    : ev.origen === 'ensenado' ? ['Enseñado por vos', 'bg-tertiary/10 text-tertiary']
+    : ['Red general', 'bg-primary-container/20 text-primary-fixed'];
+  izq.append(h('span', `font-label-sm text-label-sm px-1.5 py-0.5 rounded uppercase tracking-wider ${etiqueta[1]}`, etiqueta[0]));
+  const der = h('div', 'flex items-center gap-space-xs');
+  if (ev.confianza !== null) der.append(h('span', `px-space-sm py-0.5 rounded bg-surface-container-lowest font-data-mono text-data-mono font-semibold ${ev.confianza >= 0.9 ? 'text-tertiary' : 'text-secondary'}`, `${Math.round(ev.confianza * 100)}% CONF`));
+  if (ev.tipo === 'identificacion' && ev.seguridad) der.append(h('span', 'px-space-sm py-0.5 rounded bg-surface-container-lowest font-data-mono text-data-mono text-secondary', `SEGURIDAD ${ev.seguridad.toUpperCase()}`));
+  cab.append(izq, der);
+  art.append(cab);
+
+  const datos = h('div', 'grid grid-cols-2 sm:grid-cols-4 gap-space-xs bg-surface-container-lowest/60 p-space-sm rounded');
+  const dato = (rotulo, valor, unidad = '') => { const d = h('div', 'flex flex-col'); d.append(h('span', 'font-label-sm text-outline uppercase text-[10px]', rotulo)); const v = h('span', 'font-telemetry-metric text-telemetry-metric text-on-surface', valor); if (unidad) v.append(h('span', 'text-label-md text-outline', ` ${unidad}`)); d.append(v); return d; };
+  if (ev.tipo === 'medicion') {
+    datos.append(dato('Distancia est.', ev.distancia_m === null ? '—' : coma(ev.distancia_m), 'm'),
+                 dato('Velocidad', ev.velocidad_kmh === null ? '—' : coma(ev.velocidad_kmh, 0), 'km/h'),
+                 dato('Llega en', ev.llegada_s === null ? '—' : coma(ev.llegada_s), 's'));
+  } else if (ev.tipo === 'reconocimiento') {
+    datos.append(dato('Color', ev.color ?? '—'));
+  }
+  datos.append(Object.assign(dato('Anteojos', ev.anteojos ?? '—'), { className: 'flex flex-col sm:col-span-2' }));
+  art.append(datos);
+  return art;
+}
+
+async function cargar() {
+  const q = new URLSearchParams({ periodo: filtros.periodo, pagina: filtros.pagina, ...(filtros.min ? { min: filtros.min } : {}), ...(filtros.q ? { q: filtros.q } : {}) });
+  try {
+    ultimos = await App.api('GET', `historial?${q}`);
+    const { eventos, total, pagina, por_pagina } = ultimos;
+    $('total').textContent = `${total} evento${total === 1 ? '' : 's'}`;
+    $('lista').replaceChildren(...(eventos.length ? eventos.map(tarjeta) : [Object.assign(document.createElement('p'), {
+      className: 'p-space-md rounded bg-surface-container-low text-on-surface-variant',
+      textContent: total || filtros.q || filtros.min || filtros.periodo !== 'todo' ? 'Nada con esos filtros.' : 'Todavía no hay nada. Prendé la cámara en Visión: lo que tus anteojos reconozcan va a aparecer acá.' })]));
+    const paginas = Math.max(1, Math.ceil(total / por_pagina));
+    $('paginaTexto').textContent = `Página ${pagina} de ${paginas}`;
+    $('anterior').disabled = pagina <= 1;
+    $('siguiente').disabled = pagina >= paginas;
+  } catch (e) { App.avisar(e.message, 'error'); }
+}
+
+async function resumen() {
+  try {
+    const r = await App.api('GET', 'historial/resumen');
+    $('hEventos').textContent = r.hoy.eventos; $('hObjetos').textContent = r.hoy.objetos;
+    $('hIdent').textContent = r.hoy.identificaciones; $('hMed').textContent = r.hoy.mediciones;
+    $('desde').textContent = r.todo.eventos ? `${r.todo.eventos} en total, desde el ${fecha(r.todo.desde)}` : 'Sin eventos guardados';
+  } catch { /* el resto de la página anda igual */ }
+}
+
+function estadoDelSistema(salud, yo) {
+  const fila = (nombre, detalle, ok, valor) => {
+    const d = document.createElement('div'); d.className = 'flex items-center justify-between gap-space-sm p-space-sm rounded bg-surface-container';
+    const izq = document.createElement('div'); izq.className = 'flex items-center gap-space-sm min-w-0';
+    const pip = document.createElement('span'); pip.className = `w-2 h-2 rounded-full shrink-0 ${ok ? 'bg-tertiary' : 'bg-error'}`;
+    const t = document.createElement('div'); t.className = 'flex flex-col min-w-0';
+    const n = document.createElement('span'); n.className = 'font-label-md text-label-md text-on-surface font-semibold'; n.textContent = nombre;
+    const s = document.createElement('span'); s.className = 'font-data-mono text-data-mono text-outline truncate'; s.textContent = detalle;
+    t.append(n, s); izq.append(pip, t);
+    const v = document.createElement('span'); v.className = `font-label-sm text-label-sm ${ok ? 'text-tertiary' : 'text-error'}`; v.textContent = valor;
+    d.append(izq, v); return d;
+  };
+  const conectados = yo.anteojos.filter(a => a.conectado).length;
+  $('estado').replaceChildren(
+    fila('Anteojos', `${yo.anteojos.length} vinculado${yo.anteojos.length === 1 ? '' : 's'}`, conectados > 0, conectados ? `${conectados} conectado${conectados > 1 ? 's' : ''}` : 'ninguno conectado'),
+    fila('Base de datos', 'MySQL de XAMPP', Boolean(salud.base), salud.base ? 'Conectada' : 'Apagada'),
+    fila('Detector', 'YOLOS-tiny, 80 clases', Boolean(salud.detector), salud.detector ? 'Activo' : 'No instalado'),
+    fila('Red general', salud.red_general ? `${salud.red_general.clases} clases` : 'sin entrenar', Boolean(salud.red_general), salud.red_general ? 'Cargada' : 'Falta'),
+    fila('LLM', salud.llm === 'gemini' ? 'Gemini Live' : salud.llm === 'deepseek' ? 'DeepSeek' : 'sin clave', Boolean(salud.voz), salud.voz ? 'Disponible' : 'Apagado'));
+}
+
+// Filtros
+for (const b of document.querySelectorAll('[data-periodo]')) b.onclick = () => {
+  filtros.periodo = b.dataset.periodo; filtros.pagina = 1;
+  for (const o of document.querySelectorAll('[data-periodo]')) o.setAttribute('aria-pressed', String(o === b));
+  cargar();
+};
+for (const b of document.querySelectorAll('[data-min]')) b.onclick = () => {
+  const activo = b.getAttribute('aria-pressed') === 'true';
+  for (const o of document.querySelectorAll('[data-min]')) o.setAttribute('aria-pressed', 'false');
+  b.setAttribute('aria-pressed', String(!activo));
+  filtros.min = activo ? 0 : Number(b.dataset.min); filtros.pagina = 1;
+  cargar();
+};
+let relojBuscar;
+$('buscar').oninput = () => { clearTimeout(relojBuscar); relojBuscar = setTimeout(() => { filtros.q = $('buscar').value.trim(); filtros.pagina = 1; cargar(); }, 300); };
+$('anterior').onclick = () => { filtros.pagina--; cargar(); };
+$('siguiente').onclick = () => { filtros.pagina++; cargar(); };
+
+// Exportar lo que se está viendo (esta página, con estos filtros).
+function bajar(nombre, tipo, contenido) {
+  const a = Object.assign(document.createElement('a'), { href: URL.createObjectURL(new Blob([contenido], { type: tipo })), download: nombre });
+  a.click(); setTimeout(() => URL.revokeObjectURL(a.href), 1000);
+}
+$('json').onclick = () => bajar('historial-miia.json', 'application/json', JSON.stringify(ultimos.eventos, null, 2));
+$('csv').onclick = () => {
+  const cols = ['cuando', 'tipo', 'nombre', 'confianza', 'origen', 'color', 'marca', 'modelo', 'seguridad', 'distancia_m', 'velocidad_kmh', 'llegada_s', 'anteojos'];
+  const celda = (v) => (v === null || v === undefined ? '' : /[",\n;]/.test(String(v)) ? `"${String(v).replace(/"/g, '""')}"` : String(v));
+  bajar('historial-miia.csv', 'text/csv', [cols.join(','), ...ultimos.eventos.map(e => cols.map(c => celda(e[c])).join(','))].join('\n'));
+};
+$('limpiar').onclick = async () => {
+  if (!confirm('¿Borrar todo tu historial? Lo que les enseñaste a los anteojos no se toca.')) return;
+  try { const r = await App.api('DELETE', 'historial'); App.avisar(`Borré ${r.borrados} evento${r.borrados === 1 ? '' : 's'}`, 'ok'); filtros.pagina = 1; cargar(); resumen(); }
+  catch (e) { App.avisar(e.message, 'error'); }
+};
+
+App.montar('historial', { subtitulo: 'Historial de detecciones' }).then(({ yo, salud }) => {
+  estadoDelSistema(salud, yo);
+  cargar(); resumen();
+  setInterval(() => { if (!document.hidden && filtros.pagina === 1) { cargar(); resumen(); } }, 15000);
+}).catch((e) => App.avisar(e.message, 'error'));
+</script>
+</body>
+</html>

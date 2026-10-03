@@ -9,6 +9,9 @@
   * { box-sizing: border-box; }
   body { margin: 0; padding: 16px; background: var(--fondo); color: var(--texto); font: 15px/1.45 system-ui, sans-serif; }
   h1 { font-size: 18px; margin: 0 0 2px; }
+  .titular { display: flex; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+  #cuenta { margin-left: auto; display: flex; align-items: center; gap: 8px; color: var(--tenue); font-size: 14px; }
+  #cuenta a { color: var(--acento); }
   p.sub { margin: 0 0 16px; color: var(--tenue); }
   main { display: grid; gap: 16px; grid-template-columns: minmax(0, 660px) minmax(0, 1fr); align-items: start; }
   @media (max-width: 900px) { main { grid-template-columns: minmax(0, 1fr); } }
@@ -52,7 +55,10 @@
 </style>
 </head>
 <body>
-<h1>Emulador de gafas</h1>
+<div class="titular">
+  <h1>Emulador de gafas</h1>
+  <div id="cuenta"><span id="cuentaQuien">Sin conexión</span> · <a id="cuentaEnlace" href="/cuenta.html">Entrar o crear cuenta</a></div>
+</div>
 <p class="sub">Esta página hace de gafas: le manda al cerebro micrófono y cámara, y dibuja encima de la imagen lo que el cerebro le ordena mostrar en el OLED de 128×64.</p>
 
 <main>
@@ -99,7 +105,7 @@
     <section>
       <h2>Ficha del aparato y guía paso a paso</h2>
       <div class="fila" style="margin-top:0">
-        <button id="identificar" disabled>Marca y modelo</button>
+        <button id="identificar" disabled>¿Qué es?</button>
         <button id="guardarTarjeta" disabled>Guardar tarjeta QR</button>
         <button id="demo" disabled>Cargar guía de ejemplo</button>
         <button id="anterior" disabled>◀ Anterior</button>
@@ -108,7 +114,7 @@
       <ul style="margin-top:10px">
         <li>Cuando reconoce un aparato, <b>Siguiente</b> muestra sus partes.</li>
         <li>Si alguien muestra un <b>código QR</b> con su tarjeta, aparece en pantalla. Se guarda sólo si apretás Guardar.</li>
-        <li><b>Marca y modelo</b> le manda el recorte del aparato al LLM (pide la clave de DeepSeek o de Gemini). Sólo aparatos: con una persona en el recuadro se niega.</li>
+        <li><b>¿Qué es?</b> le manda el recorte al LLM (pide la clave de DeepSeek o de Gemini): marca y modelo de un aparato, función de una pieza, o especie y peligro de un animal. Con una persona en el recuadro se niega.</li>
         <li>Con la voz prendida, la guía la arma MIIA cuando le pedís armar o desarmar algo.</li>
         <li>Con <b>DeepSeek</b> la conversación es por escrito: podés escribirle, o prender el micrófono y el navegador (Edge o Chrome) transcribe lo que decís y lee en voz alta lo que contesta.</li>
       </ul>

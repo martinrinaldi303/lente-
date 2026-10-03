@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+<html class="dark" lang="es">
+<head>
+<meta charset="utf-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>MIIA · Enseñar objeto</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600&family=JetBrains+Mono:wght@400;500;600&display=swap"/>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"/>
+<script src="https://cdn.tailwindcss.com"></script>
+<script src="tw-config.js"></script>
+<style>
+  body { overscroll-behavior: none; font-variant-numeric: tabular-nums; }
+  button:disabled { opacity: .45; cursor: default; }
+</style>
+</head>
+<body class="bg-surface font-body-md text-body-md text-on-surface antialiased">
+<main class="pt-14 lg:pl-64 min-h-screen">
+<div class="p-space-lg flex flex-col gap-space-md">
+
+  <div class="flex flex-col lg:flex-row lg:items-start justify-between gap-space-md pb-space-xs">
+    <div class="flex flex-col gap-space-xxs">
+      <div class="flex items-center gap-space-xs"><span class="font-label-sm text-label-sm text-secondary tracking-widest uppercase">MODULE // FEW-SHOT</span><span class="text-outline-variant text-body-sm">/</span><span id="clave" class="font-label-sm text-label-sm text-outline font-data-mono">—</span></div>
+      <h1 class="font-headline-lg text-headline-lg font-semibold text-on-surface tracking-tight">Enseñar un objeto a MIIA</h1>
+      <p class="font-body-md text-body-md text-on-surface-variant max-w-3xl">Mostrale un objeto tuyo y ponele nombre: las gafas lo van a reconocer con «veo:». Se guarda en tu cuenta y lo usan todos tus anteojos.</p>
+    </div>
+    <div class="flex items-center gap-space-xs self-start shrink-0">
+      <div class="flex items-center gap-space-xs px-space-sm py-1 bg-surface-container-high rounded font-data-mono text-label-sm"><span id="pipListo" class="w-2 h-2 rounded-full bg-outline-variant"></span><span class="text-outline-variant uppercase text-[10px]">CEREBRO</span><span id="listo" class="text-outline font-medium">—</span></div>
+      <div class="flex items-center gap-space-xs px-space-sm py-1 bg-surface-container-high rounded font-data-mono text-label-sm"><span class="text-outline-variant uppercase text-[10px]">OBJETOS:</span><span id="cuantos" class="text-secondary font-medium">—</span></div>
+    </div>
+  </div>
+
+  <div class="bg-surface-container-low rounded p-space-md flex items-start gap-space-md">
+    <div class="w-8 h-8 rounded bg-secondary-container/20 flex items-center justify-center shrink-0 text-secondary"><span class="material-symbols-outlined text-[20px]" aria-hidden="true">shield_lock</span></div>
+    <div class="flex flex-col gap-space-xxs min-w-0">
+      <div class="flex items-center gap-space-xs flex-wrap"><span class="font-label-md text-label-md text-on-surface font-semibold uppercase tracking-wider text-[11px]">Sin fotos guardadas</span><span id="dims" class="font-label-sm text-label-sm px-1.5 bg-surface-container-high rounded text-primary text-[10px]">— DIMENSIONES</span></div>
+      <p class="font-body-sm text-body-sm text-on-surface-variant leading-relaxed">De cada cuadro se guarda sólo un vector de números (con DINOv2), que no se puede volver a convertir en imagen. Las fotos no se guardan ni en el disco ni en la base.</p>
+    </div>
+  </div>
+
+  <div class="grid grid-cols-1 lg:grid-cols-12 gap-space-md">
+    <div class="lg:col-span-8 flex flex-col gap-space-md min-w-0">
+      <div class="bg-surface-container-low rounded p-space-md flex flex-col gap-space-md">
+        <div class="flex items-center justify-between pb-space-xs"><span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">01 // El objeto</span><span class="font-data-mono text-data-mono text-outline-variant">12 CUADROS POR TANDA</span></div>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-space-md">
+          <div class="flex flex-col gap-space-xs md:col-span-2">
+            <label class="font-label-md text-label-md text-on-surface" for="nombre">Nombre del objeto</label>
+            <div class="relative"><input id="nombre" maxlength="16" class="w-full h-8 px-space-sm bg-surface-container-lowest text-on-surface rounded focus:outline-none focus:bg-surface-container text-body-md" placeholder="mi celular"/><span class="absolute right-2 top-2 font-data-mono text-[10px] text-outline">STR</span></div>
+            <div class="flex flex-wrap gap-1 pt-1" id="sugerencias">
+              <button type="button" data-nombre="nada" class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-surface-container-high text-secondary hover:bg-surface-container-highest">nada (el fondo vacío)</button>
+              <button type="button" data-nombre="llaves" class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant hover:text-secondary hover:bg-surface-container-highest">llaves</button>
+              <button type="button" data-nombre="mi celular" class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant hover:text-secondary hover:bg-surface-container-highest">mi celular</button>
+              <button type="button" data-nombre="taza" class="font-label-sm text-label-sm px-1.5 py-0.5 rounded bg-surface-container-high text-on-surface-variant hover:text-secondary hover:bg-surface-container-highest">taza</button>
+            </div>
+          </div>
+          <div class="flex flex-col gap-space-xs">
+            <span class="font-label-md text-label-md text-on-surface">Para mostrarlo en pantalla</span>
+            <div class="h-8 flex items-center font-data-mono text-data-mono text-secondary font-semibold">confianza ≥ 0,70</div>
+            <span class="font-data-mono text-data-mono text-outline-variant">y 3 de los últimos 5 cuadros</span>
+          </div>
+        </div>
+      </div>
+
+      <div class="bg-surface-container-low rounded overflow-hidden flex flex-col">
+        <div class="bg-surface-container-lowest px-space-md py-space-xs flex items-center justify-between gap-space-sm font-data-mono text-data-mono flex-wrap">
+          <div class="flex items-center gap-space-md"><span class="flex items-center gap-1.5"><span id="pipCam" class="w-2 h-2 rounded-full bg-outline-variant"></span><span class="text-on-surface font-semibold tracking-wider">CÁMARA</span></span><span class="text-outline-variant">|</span><span id="nombreCam" class="text-on-surface-variant">apagada</span></div>
+          <div class="flex items-center gap-space-xs"><span class="text-outline uppercase text-[10px]">CUADROS/S:</span><span id="cps" class="text-tertiary">0</span></div>
+        </div>
+        <div class="relative w-full aspect-[4/3] bg-surface-container-lowest flex items-center justify-center overflow-hidden select-none">
+          <video id="video" class="absolute inset-0 w-full h-full object-fill" muted playsinline></video>
+          <div class="absolute inset-0 bg-[radial-gradient(#00e3fd_0.6px,transparent_0.6px)] [background-size:24px_24px] opacity-10 pointer-events-none"></div>
+          <!-- El recuadro que se le enseña a la red: el mismo que usa el cerebro -->
+          <div id="roi" class="absolute top-[20%] bottom-[20%] left-[27.5%] right-[27.5%] pointer-events-none flex flex-col justify-between p-2">
+            <div class="flex items-center justify-between"><div id="roiTag" class="bg-secondary-container text-surface-container-lowest px-1.5 py-0.5 font-data-mono text-[10px] font-bold tracking-wider rounded-sm flex items-center gap-1"><span class="w-1.5 h-1.5 rounded-full bg-surface-container-lowest"></span><span id="roiTexto">PONÉ EL OBJETO ACÁ</span></div></div>
+            <div class="absolute top-0 left-0 w-4 h-4 border-t-2 border-l-2 border-secondary"></div>
+            <div class="absolute top-0 right-0 w-4 h-4 border-t-2 border-r-2 border-secondary"></div>
+            <div class="absolute bottom-0 left-0 w-4 h-4 border-b-2 border-l-2 border-secondary"></div>
+            <div class="absolute bottom-0 right-0 w-4 h-4 border-b-2 border-r-2 border-secondary"></div>
+          </div>
+          <div id="tarjetaHud" class="absolute top-[3%] right-[3%] w-max max-w-[45%] min-w-[8rem] pointer-events-none rounded-lg backdrop-blur-sm shadow-lg px-space-md py-space-sm flex flex-col gap-space-xs" aria-live="polite"></div>
+          <div id="sinCamara" class="absolute inset-0 bg-surface-container-lowest flex flex-col items-center justify-center p-space-lg text-center gap-space-sm">
+            <span class="material-symbols-outlined text-outline text-[28px]" aria-hidden="true">videocam_off</span>
+            <span class="font-headline-sm text-headline-sm font-semibold">Prendé la cámara para enseñar</span>
+            <button id="prender" type="button" class="h-9 px-space-lg rounded bg-primary-container text-on-primary-container hover:bg-primary font-label-md text-label-md font-semibold flex items-center gap-2"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">videocam</span>Prender la cámara</button>
+          </div>
+          <div class="absolute bottom-2 left-2 right-2 px-space-md py-1.5 rounded bg-surface-container-lowest/90 backdrop-blur-md flex items-center justify-between gap-space-sm font-data-mono text-data-mono">
+            <span class="text-[11px] truncate"><span class="text-outline">AHORA VE:</span> <span id="ve" class="text-on-surface font-semibold">—</span></span>
+            <span class="text-[11px] text-primary font-semibold whitespace-nowrap">FEW-SHOT</span>
+          </div>
+        </div>
+        <div class="p-space-md bg-surface-container flex flex-col gap-space-sm">
+          <div class="flex items-center justify-between gap-space-sm flex-wrap">
+            <div class="flex items-center gap-space-sm"><div class="w-6 h-6 rounded bg-primary-container flex items-center justify-center text-on-primary"><span class="material-symbols-outlined text-[16px]" aria-hidden="true">collections_bookmark</span></div><span class="font-headline-sm text-headline-sm text-on-surface">Capturando ejemplos: <span id="progreso" class="text-secondary font-data-mono font-semibold">0 / 12</span></span></div>
+            <span id="progresoTexto" class="font-data-mono text-data-mono text-outline">Esperando que aprietes «Aprender objeto»</span>
+          </div>
+          <div id="barra" class="grid grid-cols-12 gap-1.5 w-full"></div>
+        </div>
+        <div class="p-space-md bg-surface-container-high flex flex-wrap items-center justify-between gap-space-sm">
+          <p class="font-body-sm text-body-sm text-on-surface-variant max-w-md">Mantenelo en el recuadro y giralo un poco mientras se llena la barra: 12 cuadros, unos 6 segundos.</p>
+          <button id="aprender" type="button" class="h-9 px-space-lg rounded bg-primary-container text-on-primary-container hover:bg-primary font-label-md text-label-md font-semibold flex items-center gap-2"><span class="material-symbols-outlined text-[18px]" aria-hidden="true">model_training</span><span>Aprender objeto</span><span class="material-symbols-outlined text-[16px]" aria-hidden="true">arrow_forward</span></button>
+        </div>
+      </div>
+    </div>
+
+    <div class="lg:col-span-4 flex flex-col gap-space-md min-w-0">
+      <div class="bg-surface-container-low rounded p-space-md flex flex-col gap-space-sm">
+        <div class="flex items-center justify-between"><div class="flex items-center gap-space-xs"><span class="material-symbols-outlined text-secondary text-[18px]" aria-hidden="true">inventory_2</span><span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">Lo que ya aprendió</span></div><span id="pipBase" class="w-2 h-2 rounded-full bg-outline-variant"></span></div>
+        <div id="lista" class="flex flex-col gap-space-xs font-data-mono text-data-mono"><span class="text-outline">Cargando…</span></div>
+      </div>
+
+      <div class="bg-surface-container-low rounded p-space-md flex flex-col gap-space-xs">
+        <div class="flex items-center gap-space-xs"><span class="material-symbols-outlined text-secondary text-[18px]" aria-hidden="true">hub</span><span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">El modelo</span></div>
+        <div class="flex flex-col gap-space-xs font-data-mono text-data-mono">
+          <div class="flex items-center justify-between p-space-xs rounded bg-surface-container"><span class="text-outline">Extractor:</span><span id="extractor" class="text-on-surface font-semibold">—</span></div>
+          <div class="flex items-center justify-between p-space-xs rounded bg-surface-container"><span class="text-outline">Vector:</span><span id="vector" class="text-secondary font-semibold">—</span></div>
+          <div class="flex items-center justify-between p-space-xs rounded bg-surface-container"><span class="text-outline">Ejemplos guardados:</span><span id="ejemplos" class="text-on-surface">—</span></div>
+          <div class="flex items-center justify-between p-space-xs rounded bg-surface-container"><span class="text-outline">Dónde se guarda:</span><span id="dondeGuarda" class="text-on-surface">—</span></div>
+        </div>
+        <p class="font-body-sm text-body-sm text-outline pt-space-xs">Medido con fotos de prueba: con 12 cuadros por objeto acierta 96 de cada 100 (con rasgos hechos a mano, 43).</p>
+      </div>
+
+      <div class="bg-surface-container-low rounded p-space-md flex flex-col gap-space-md">
+        <div class="flex items-center gap-space-xs"><span class="material-symbols-outlined text-outline text-[18px]" aria-hidden="true">help_center</span><span class="font-label-sm text-label-sm uppercase tracking-wider text-outline">Cómo enseñar bien</span></div>
+        <ol class="flex flex-col gap-space-sm">
+          <li class="flex items-start gap-space-sm"><span class="w-5 h-5 rounded-full bg-surface-container-high flex items-center justify-center shrink-0 font-data-mono text-[11px] text-secondary font-bold">1</span><p class="font-body-sm text-body-sm text-on-surface-variant leading-tight"><span class="text-on-surface font-medium">Primero «nada»:</span> el recuadro vacío, con el fondo de siempre. Sin eso, la red no tiene con qué comparar.</p></li>
+          <li class="flex items-start gap-space-sm"><span class="w-5 h-5 rounded-full bg-surface-container-high flex items-center justify-center shrink-0 font-data-mono text-[11px] text-secondary font-bold">2</span><p class="font-body-sm text-body-sm text-on-surface-variant leading-tight"><span class="text-on-surface font-medium">El objeto llenando el recuadro,</span> y girándolo un poco mientras se llena la barra.</p></li>
+          <li class="flex items-start gap-space-sm"><span class="w-5 h-5 rounded-full bg-surface-container-high flex items-center justify-center shrink-0 font-data-mono text-[11px] text-secondary font-bold">3</span><p class="font-body-sm text-body-sm text-on-surface-variant leading-tight"><span class="text-on-surface font-medium">Dos objetos o más.</span> Si se confunde, enseñalo otra vez: cada tanda suma 12 ejemplos.</p></li>
+        </ol>
+      </div>
+    </div>
+  </div>
+</div>
+</main>
+
+<script src="shell.js"></script>
+<script src="cliente_gafas.js"></script>
+<script>
+const $ = (id) => document.getElementById(id);
+const cliente = new ClienteGafas();
+let aprendiendo = null;
+
+function barra(hechos) {
+  $('barra').replaceChildren(...Array.from({ length: 12 }, (_, i) => {
+    const d = document.createElement('div');
+    d.className = `h-2 rounded-sm ${i < hechos ? 'bg-tertiary' : 'bg-surface-container-highest'} ${i === hechos - 1 && aprendiendo ? 'animate-pulse' : ''}`;
+    return d;
+  }));
+  $('progreso').textContent = `${hechos} / 12`;
+}
+
+async function cargarLista() {
+  try {
+    const yo = await App.api('GET', 'yo');
+    const objetos = yo.red?.objetos ?? [];
+    $('clave').textContent = yo.red?.clave ?? '—';
+    const [fuente, dim] = (yo.red?.clave ?? '|').split('|');
+    $('extractor').textContent = fuente.startsWith('dino') ? 'DINOv2 ViT-S/14' : fuente || '—';
+    $('vector').textContent = dim ? `${dim} dimensiones` : '—';
+    $('dims').textContent = dim ? `${dim} DIMENSIONES` : '—';
+    $('ejemplos').textContent = objetos.reduce((s, o) => s + o.ejemplos, 0);
+    $('cuantos').textContent = objetos.length;
+    $('dondeGuarda').textContent = 'MySQL, en tu cuenta';
+    $('pipBase').className = 'w-2 h-2 rounded-full bg-tertiary';
+    $('lista').replaceChildren(...(objetos.length ? objetos.map(o => {
+      const fila = document.createElement('div');
+      fila.className = 'flex items-center justify-between gap-space-sm p-space-xs rounded bg-surface-container';
+      const n = document.createElement('span'); n.className = 'text-on-surface truncate'; n.textContent = o.nombre;
+      const der = document.createElement('span'); der.className = 'flex items-center gap-space-sm';
+      const e = document.createElement('span'); e.className = 'text-outline'; e.textContent = `${o.ejemplos} ej.`;
+      const b = document.createElement('button'); b.type = 'button'; b.className = 'px-1.5 py-0.5 rounded text-error hover:bg-error-container/20 text-[11px]'; b.textContent = 'Olvidar';
+      b.onclick = () => { if (confirm(`¿Olvidar «${o.nombre}»? Se borran sus ${o.ejemplos} ejemplos.`)) cliente.enviarJson({ t: 'olvidar', nombre: o.nombre }); };
+      der.append(e, b); fila.append(n, der);
+      return fila;
+    }) : [Object.assign(document.createElement('span'), { className: 'text-outline', textContent: 'Todavía nada. Empezá por «nada» y después un objeto.' })]));
+  } catch (e) { App.avisar(e.message, 'error'); }
+}
+
+function pintar() {
+  const conectado = cliente.conectado, cam = Boolean(cliente.cam);
+  $('listo').textContent = conectado ? 'CONECTADO' : 'DESCONECTADO';
+  $('listo').className = `${conectado ? 'text-tertiary' : 'text-error'} font-medium`;
+  $('pipListo').className = `w-2 h-2 rounded-full ${conectado ? 'bg-tertiary' : 'bg-error'}`;
+  $('sinCamara').classList.toggle('hidden', cam);
+  $('pipCam').className = `w-2 h-2 rounded-full ${cam ? 'bg-error animate-pulse' : 'bg-outline-variant'}`;
+  $('nombreCam').textContent = cam ? cliente.cam.nombre : 'apagada';
+  $('aprender').disabled = !conectado || !cam || Boolean(aprendiendo);
+}
+
+cliente.on('conexion', ({ estado, motivo }) => {
+  App.enlace({ estado, texto: estado === 'conectado' ? 'Gafas conectadas' : estado === 'conectando' ? 'Conectando…' : 'Gafas desconectadas', detalle: 'esta página hace de gafas' });
+  if (estado === 'desconectado' && motivo) App.avisar(motivo, 'error');
+  pintar();
+});
+cliente.on('camara', pintar);
+cliente.on('enviados', (n) => { $('cps').textContent = n; });
+cliente.on('aviso', (m) => { App.avisar(m.texto); if (/^Olvidé/.test(m.texto)) cargarLista(); });
+const tarjetaHud = montarTarjetaHud($('tarjetaHud'));
+cliente.on('hud', (m) => {
+  tarjetaHud.pintar(m);
+  // «veo: taza 92%» o «creo: …»: lo que la red reconoce ahora en el recuadro.
+  const p = leerPie(m.pie);
+  $('ve').textContent = p.nombre ? `${conMayuscula(p.nombre)} · ${p.confianza}%${p.fuente === 'Lo que le enseñaste' ? ' · enseñado' : ''}` : '—';
+  if (m.titulo === 'Aprendiendo') {
+    const [nombre, cuenta] = m.lineas ?? [];
+    const hechos = Number(String(cuenta).split('/')[0]) || 0;
+    aprendiendo = nombre;
+    barra(hechos);
+    $('progresoTexto').textContent = `Aprendiendo «${nombre}»: giralo un poco`;
+    $('roiTexto').textContent = `CAPTURANDO · ${hechos}/12`;
+  } else if (aprendiendo) {
+    const nombre = aprendiendo;
+    aprendiendo = null;
+    barra(12);
+    $('progresoTexto').textContent = (m.lineas ?? []).join(' ') || `Aprendí: ${nombre}`;
+    $('roiTexto').textContent = 'PONÉ EL OBJETO ACÁ';
+    App.avisar(`Aprendí «${nombre}»`, 'ok');
+    cargarLista();
+  }
+  pintar();
+});
+
+$('prender').onclick = async () => { try { await cliente.prenderCamara($('video')); } catch (e) { App.avisar(e.message, 'error'); } };
+for (const b of document.querySelectorAll('#sugerencias button')) b.onclick = () => { $('nombre').value = b.dataset.nombre; $('nombre').focus(); };
+function aprender() {
+  const nombre = $('nombre').value.trim();
+  if (!nombre) { App.avisar('Escribí primero cómo se llama el objeto.'); return $('nombre').focus(); }
+  if (!cliente.cam) return App.avisar('Prendé la cámara primero.');
+  barra(0);
+  cliente.enviarJson({ t: 'ensenar', nombre });
+  $('progresoTexto').textContent = `Empezando con «${nombre}»…`;
+}
+$('aprender').onclick = aprender;
+$('nombre').onkeydown = (e) => { if (e.key === 'Enter' && !$('aprender').disabled) aprender(); };
+
+tarjetaHud.pintar({ titulo: 'MIIA gafas', lineas: ['Conectando…'] });
+barra(0);
+pintar();
+App.montar('ensenar', { subtitulo: 'Enseñar un objeto' }).then(() => { cargarLista(); cliente.conectar(); }).catch((e) => App.avisar(e.message, 'error'));
+</script>
+</body>
+</html>

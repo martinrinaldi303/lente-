@@ -48,6 +48,7 @@ npm test
 |---|---|---|
 | Claves y contraseña de la base | `.env` | Copiar `.env.example` y completar. **No se sube nunca** |
 | DINOv2-small (24,5 MB) | `modelos/dinov2-small/model_quantized.onnx` | Repo `Xenova/dinov2-small` de Hugging Face. Sin él las gafas andan con los dos extractores propios |
+| Caras: YuNet (232 KB, MIT) y SFace (38,7 MB, Apache 2.0) | `modelos/caras/face_detection_yunet_2023mar.onnx` y `modelos/caras/face_recognition_sface_2021dec.onnx` | Repos `opencv/face_detection_yunet` y `opencv/face_recognition_sface` de Hugging Face (OpenCV Zoo). Sin ellos no se reconoce a nadie: «Personas conocidas» queda apagado |
 | Caltech-256 (1,2 GB) y COCO val2017 (1 GB) | `datos/` | Sólo para reentrenar. Ver `PLAN.md` |
 | El entrenador compilado | `cpp/entrenar.exe` (`cpp/entrenar` en Linux) | `npm run compilar` (g++ de MSYS2 en Windows, el g++ del sistema en Linux) |
 | La base `gafas` | MySQL de XAMPP | La crea sola al arrancar si hay usuario; el esquema está en `docs/esquema_gafas.sql`. Es opcional |

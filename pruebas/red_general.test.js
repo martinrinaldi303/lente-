@@ -80,6 +80,31 @@ test('exportar con espejo duplica el entrenamiento y deja la prueba como está',
   } finally { rmSync(dir, { recursive: true, force: true }); }
 });
 
+test('exportar saca las fotos repetidas: en dos clases no entra ninguna, en la misma queda una', async () => {
+  const dir = mkdtempSync(join(tmpdir(), 'gafas-base-'));
+  try {
+    const categorias = baseDeJuguete(dir, 20);
+    const salida = join(dir, 'antes');
+    const antes = await exportar({ base: dir, categorias, salida, espejo: true });
+    assert.equal(antes.ambiguas + antes.repetidas, 0);
+    // La misma taza, también en la carpeta de la pinza (dos clases) y otra vez entre las tazas.
+    const taza = readFileSync(join(dir, '002.taza-roja', '002_0003.jpg'));
+    writeFileSync(join(dir, '003.pinza-azul', 'zz_igual_a_una_taza.jpg'), taza);
+    const pinza = readFileSync(join(dir, '003.pinza-azul', '003_0005.jpg'));
+    writeFileSync(join(dir, '003.pinza-azul', 'zz_otra_vez.jpg'), pinza);
+    const despues = await exportar({ base: dir, categorias, salida: join(dir, 'despues'), espejo: true });
+    assert.equal(despues.ambiguas, 2);       // la taza original y su copia en la pinza
+    assert.equal(despues.repetidas, 1);
+    const n = (r, c) => r.porClase[c].entrenamiento / 2 + r.porClase[c].prueba;     // fotos, no filas
+    assert.equal(n(despues, 'taza'), n(antes, 'taza') - 1);
+    assert.equal(n(despues, 'pinza'), n(antes, 'pinza'));
+    // Con espejo, las filas de entrenamiento siguen yendo de a pares.
+    const ent = leerRasgos(join(dir, 'despues', FUENTE, 'entrenamiento.bin'));
+    assert.equal(ent.filas.length, despues.entrenamiento);
+    for (let k = 0; k < ent.filas.length; k += 2) assert.equal(ent.filas[k].etiqueta, ent.filas[k + 1].etiqueta);
+  } finally { rmSync(dir, { recursive: true, force: true }); }
+});
+
 test('varios extractores a la vez: se entrenan por separado y votan juntos', { skip: SIN_BINARIO }, async () => {
   const dir = mkdtempSync(join(tmpdir(), 'gafas-conj-'));
   try {

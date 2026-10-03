@@ -141,8 +141,9 @@ test('la base anota sin frenar a nadie: cola acotada, y un error no la detiene',
   assert.equal(errores.length <= 1, true);            // el que falló avisó (o ya se había descartado)
   const ultima = pool.consultas.at(-1);
   assert.match(ultima.sql, /INSERT INTO tarjetas_qr .* ON DUPLICATE KEY UPDATE veces = veces \+ 1/);
-  assert.equal(ultima.valores[0].length, 64);         // la huella sha256
-  assert.equal(ultima.valores[4], TARJETA);
+  assert.equal(ultima.valores[0], 0);                 // sin cuenta: el dueño 0
+  assert.equal(ultima.valores[1].length, 64);         // la huella sha256
+  assert.equal(ultima.valores[5], TARJETA);
 });
 
 test('sin configuración o sin MySQL, no hay base y nadie se cae', async () => {
