@@ -78,11 +78,52 @@ test('tocar un recuadro equivocado: no se marca más, se guarda, y se puede olvi
   a.sesion.alJson({ t: 'corregir', nombre: 'persona', caja: yo.caja });
   await tic(); await tic();
   assert.match(a.avisos().at(-1), /Ahí hay una cara/);
-  // Olvidar las correcciones: vuelve a marcarse.
+  // Olvidar las correcciones: vuelve a marcarse, y el botón se entera.
   assert.match(a.sesion.alJson({ t: 'olvidar_correcciones' }).frase, /Olvidé 1 corrección$/);
+  assert.equal(a.avisos().at(-1), 'Olvidé 1 corrección');
   assert.equal(a.olvidadas(), 1);
+  assert.equal(a.sesion.alJson({ t: 'olvidar_correcciones' }).frase, 'Olvidé 0 correcciones');
   await a.mostrar(2);
   assert.ok(a.cajas().lista.every(c => !c.corregido));
+});
+
+test('no se corrige lo que el detector no marca, ni un recuadro roto, y un error no tumba nada', async () => {
+  const ropa = det('persona', 200, 30, 90, 180), yo = det('persona', 40, 20, 120, 210, 0.99);
+  const a = armar({ detecciones: [ropa, yo], caraEn: { x0: 70, y0: 40, ancho: 50, alto: 50 } });
+  await a.mostrar(3);
+  // «No lo conozco», una persona conocida o una especie no son clases del detector.
+  for (const nombre of ['No lo conozco', 'Amigo Prueba', 'picaflor'])
+    assert.match((await a.sesion._corregir(nombre, ropa.caja)).motivo, /Sólo le corrijo al detector/);
+  // Un recuadro tocado que llega roto no se cambia por otro.
+  a.sesion.alJson({ t: 'corregir', nombre: 'persona', caja: { x0: 'a', y0: 1 } });
+  await tic(); await tic();
+  assert.match(a.avisos().at(-1), /no llegó bien/);
+  assert.equal(a.guardadas.length, 0);
+  // Si algo falla a la mitad (acá, el detector de caras), se avisa y la sesión sigue.
+  a.sesion.caras = { async detectar() { throw new Error('onnx roto'); } };
+  a.sesion.alJson({ t: 'corregir', nombre: 'persona', caja: ropa.caja });
+  a.sesion.alJson({ t: 'corregir', nombre: 'persona', todas: true });
+  for (let i = 0; i < 4; i++) await tic();
+  assert.deepEqual(a.avisos().slice(-2), ['No pude corregir: onnx roto', 'No pude corregir: onnx roto']);
+  // Sin detector no hay recuadros que corregir.
+  const sin = new Sesion({ enviarJson() {}, enviarBin() {}, red: new RedObjetos(DIM, FUENTE) });
+  assert.match((await sin._corregir('persona')).motivo, /hace falta el detector/);
+});
+
+test('se corrige sobre el cuadro en que el detector vio el recuadro, no sobre el último que llegó', async () => {
+  const ropa = det('persona', 200, 30, 90, 180);
+  const a = armar({ detecciones: [ropa] });
+  await a.mostrar(2);
+  const vista = a.sesion.imgDetecciones;
+  const miradas = [];
+  a.sesion.extractorPersonal = { ...a.sesion.extractorPersonal, async extraer(img) { miradas.push(img); return new Float32Array(DIM); } };
+  // Llega otro cuadro y el detector todavía no terminó con él.
+  a.estado.detecciones = new Promise(() => {});
+  a.sesion.alBinario(empaquetar(BIN_JPEG, cuadroJpeg('taza', azar(5))));
+  await tic(); await tic();
+  assert.equal(a.sesion.imgDetecciones, vista);
+  assert.equal((await a.sesion._corregir('persona', ropa.caja)).ok, true);
+  assert.equal(miradas.at(-1), vista);
 });
 
 test('por voz, «eso no es una persona» corrige lo que no tiene cara, nunca a quien la tiene', async () => {
@@ -97,6 +138,30 @@ test('por voz, «eso no es una persona» corrige lo que no tiene cara, nunca a q
   const b = armar({ detecciones: [yo], caraEn: { x0: 130, y0: 40, ancho: 50, alto: 50 } });
   await b.mostrar(2);
   assert.match((await b.sesion.ejecutar('no_es', { nombre: 'persona' })).motivo, /No veo ningún «persona»/);
+});
+
+test('«la ropa no es persona»: de una vez, las que no tienen cara y no están en el centro', async () => {
+  // El cuadro es de 320×240: el centro es (160, 120). Él está en el centro con la cara
+  // tapada (la lata delante); la ropa a los costados; alguien con cara a la derecha.
+  const yo = det('persona', 100, 20, 140, 210, 0.94), ropa1 = det('persona', 10, 30, 60, 150, 0.9), ropa2 = det('persona', 250, 40, 60, 160, 0.96);
+  const otro = det('persona', 180, 0, 50, 70, 0.95), dudosa = det('persona', 0, 200, 30, 30, 0.55);
+  const a = armar({ detecciones: [yo, ropa1, ropa2, otro, dudosa], caraEn: { x0: 195, y0: 10, ancho: 20, alto: 20 } });
+  await a.mostrar(2);
+  const r = await a.sesion._corregirTodas('persona');
+  assert.equal(r.ok, true);
+  assert.equal(r.n, 2);
+  assert.match(r.frase, /esos 2 recuadros no eran «persona»/);
+  assert.equal(a.guardadas.length, 2);
+  assert.deepEqual(a.sesion.pistasCorreccion.map(p => Math.round(p.x0 * 320)).sort((x, y) => x - y), [10, 250]);
+  // Por el panel es el mismo mensaje de siempre, con `todas`.
+  a.sesion.alJson({ t: 'corregir', nombre: 'persona', todas: true });
+  await tic(); await tic();
+  assert.match(a.avisos().at(-1), /recuadros no eran «persona»|No veo ningún/);
+  // Sin nada fuera del centro, no corrige nada.
+  const b = armar({ detecciones: [yo] });
+  await b.mostrar(2);
+  assert.match((await b.sesion.ejecutar('no_es', { nombre: 'persona', todas: true })).motivo, /sin cara y fuera del centro/);
+  assert.equal(b.guardadas.length, 0);
 });
 
 // ── Con la base ─────────────────────────────────────────────────────────────

@@ -274,6 +274,7 @@
     const m = /^(veo: |creo: |~)(.+) (\d+)%$/.exec(pie);
     if (m) return { nombre: m[2], confianza: Number(m[3]), fuente: m[1] === 'veo: ' ? 'Lo que le enseñaste' : 'Red general' };
     if (pie === 'veo: -') return { texto: 'Nada reconocido en la mirada' };
+    if (pie === 'veo: ?') return { texto: 'Algo que no conozco: preguntá «¿qué es?»' };
     if (pie === 'veo: sin entrenar') return { texto: 'Todavía no aprendió nada' };
     return { texto: pie };
   }
@@ -386,8 +387,11 @@
     // Su distancia: la medida del seguimiento, o con «ver escena», la estimada.
     const enEscena = verEscena && mirado ? escena?.objetos?.find(o => o.nombre === mirado.nombre && superpuestos(o, mirado)) : null;
     const lejos = mirado?.metros !== undefined ? metros(mirado.metros) : enEscena?.metros ? `≈${enEscena.metros} m` : '';
-    if (mirado) caja(mirado, { trazo: '#00e3fd', grosor: 2, esquinas: true, negrita: true, fondo: '#00e3fd', tinta: '#00363d',
-                               texto: `${conMayuscula(mirado.nombre)} · ${porciento(mirado.confianza)}${lejos ? ` · ${lejos}` : ''}` });
+    // Algo en la mirada que no se parece a nada conocido: se marca, sin nombre ni porcentaje.
+    if (mirado?.desconocido) caja(mirado, { trazo: '#ffb74d', grosor: 2, esquinas: true, negrita: true, fondo: '#ffb74d', tinta: '#3d2400',
+                                            texto: `${mirado.nombre} · ¿qué es?` });
+    else if (mirado) caja(mirado, { trazo: '#00e3fd', grosor: 2, esquinas: true, negrita: true, fondo: '#00e3fd', tinta: '#00363d',
+                                    texto: `${conMayuscula(mirado.nombre)} · ${porciento(mirado.confianza)}${lejos ? ` · ${lejos}` : ''}` });
   }
 
   window.ClienteGafas = ClienteGafas;

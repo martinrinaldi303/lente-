@@ -12,7 +12,7 @@
 //   · el TOKEN_GAFAS del .env, o el emulador sin sesión (sólo en esta PC) → «sin cuenta»,
 //     que es lo de siempre: lo aprendido antes de las cuentas.
 //
-//   node servidor.js          y abrir http://127.0.0.1:8787
+//   node servidor.js          y abrir http://localhost:8787 (Google sólo acepta ese origen)
 
 import express from 'express';
 import { timingSafeEqual } from 'node:crypto';
@@ -28,6 +28,7 @@ import { rutasDeApp } from './src/rutas_app.js';
 import { crearCaras } from './src/caras.js';
 import { Conocidos, rutasDeConocidos } from './src/conocidos.js';
 import { Correcciones, cargarPositivos, leerCategorias } from './src/correcciones.js';
+import { Ejemplos } from './src/parecido.js';
 import { Conjunto, votantes } from './src/conjunto.js';
 import { crearDetector } from './src/detector.js';
 import { extractoresDisponibles } from './src/extractores.js';
@@ -157,6 +158,8 @@ const conocidosDe = async (usuarioId) => (usuarioId && conocidos && caras ? cono
 const correcciones = base ? new Correcciones(base.pool) : null;
 const positivos = cargarPositivos({ dirRasgos: join(RAIZ, 'datos', 'rasgos'), categorias: leerCategorias(join(RAIZ, 'herramientas', 'categorias.json')),
                                     fuente: extractorPersonal.fuente, dim: extractorPersonal.dim });
+// Para decir «no sé qué es» (src/parecido.js): cómo se ve de verdad cada clase.
+const ejemplos = Ejemplos.cargar(join(RAIZ, 'datos', 'rasgos'), { fuente: extractorPersonal.fuente });
 const correccionesDe = async (usuarioId) => (correcciones
   ? correcciones.deUsuario(usuarioId, extractorPersonal.fuente, extractorPersonal.dim).catch(() => new Map()) : new Map());
 // Las conexiones de gafas abiertas, con su dueño: { ws, dueno }. Sirve para mostrar en el
@@ -329,7 +332,7 @@ wss.on('connection', (ws, req) => {
       guardarRed: guardarRedDe(usuarioId), visionAlLlm: VISION_AL_LLM,
       memoria: memoriaDe(usuarioId), guias, leer, anotarEvaluacion: anotarEvaluacionDe(usuarioId),
       caras, conocidos: await conocidosDe(usuarioId), zoom: true,
-      correcciones: await correccionesDe(usuarioId), positivos,
+      correcciones: await correccionesDe(usuarioId), positivos, ejemplos,
       guardarCorreccion: correcciones ? (clase, fuente, v) => correcciones.agregar(usuarioId, clase, fuente, v) : null,
       olvidarCorrecciones: correcciones ? () => correcciones.olvidar(usuarioId).catch(() => 0) : null,
     });
@@ -384,6 +387,8 @@ http.on('error', (e) => {
 });
 
 http.listen(PUERTO, HOST, () => {
+  // Las pantallas se abren con «localhost»: es el origen que Google acepta para entrar.
+  const panel = `http://${HOST === '127.0.0.1' ? 'localhost' : HOST}:${PUERTO}`;
   console.log(`✅ Cerebro de las gafas en http://${HOST}:${PUERTO}`);
   console.log(`   voz: ${!CLAVE ? `APAGADA (${FALTA_CLAVE})`
     : LLM === 'deepseek' ? `${MODELO} (DeepSeek), por escrito: en el emulador escucha y habla el navegador`
@@ -392,8 +397,8 @@ http.listen(PUERTO, HOST, () => {
   console.log(`   base de datos: ${base
     ? `${process.env.DB_NAME} en MySQL` + (ejemplosDeLaBase === null ? '' : ` — ${ejemplosDeLaBase} ejemplos recuperados`)
     : 'APAGADA (lo aprendido queda sólo en estado/)'}`);
-  console.log(`   pantallas: http://${HOST === '127.0.0.1' ? 'localhost' : HOST}:${PUERTO}/ (Visión, Enseñar, Historial…) · emulador viejo en /emulador.html`);
-  console.log(`   cuentas: ${cuentas ? `panel en http://${HOST}:${PUERTO}/cuenta.html${REGISTRO_ABIERTO ? ' (cualquiera de la red puede crear cuenta)' : ''}` : 'APAGADAS (necesitan la base)'}`);
+  console.log(`   pantallas: ${panel}/ (Visión, Enseñar, Historial…) · emulador viejo en /emulador.html`);
+  console.log(`   cuentas: ${cuentas ? `panel en ${panel}/cuenta.html${REGISTRO_ABIERTO ? ' (cualquiera de la red puede crear cuenta)' : ''}` : 'APAGADAS (necesitan la base)'}`);
   console.log(`   entrar con Google: ${GOOGLE_CLIENT_ID ? `sí (abrí el panel con http://localhost:${PUERTO}, que es el origen que conoce Google)` : 'no (falta GOOGLE_CLIENT_ID en .env)'}`);
   console.log(`   red general: ${conjunto
     ? `${conjunto.clases.length} clases, votan ${conjunto.miembros.map(m => m.extractor.fuente).join(' + ')}`
@@ -403,6 +408,7 @@ http.listen(PUERTO, HOST, () => {
   console.log(`   leer texto: ${leer ? `a pedido, con ${MODELO_VISION}` : 'APAGADO (falta la clave)'}`);
   console.log(`   guías guardadas: ${guias.length} · objetos recordados: ${memoria.vistos.size}`);
   console.log(`   correcciones al detector: con ${[...positivos.values()].reduce((s, l) => s + l.length, 0)} ejemplos de verdad de ${positivos.size} clases para comparar`);
+  console.log(`   «no lo conozco»: ${ejemplos ? `compara con ${ejemplos.total} ejemplos de ${ejemplos.porClase.size} clases` : 'no (faltan los ejemplos en datos/rasgos)'}`);
   console.log(`   personas conocidas: ${caras ? 'sí, sólo las que se cargaron solas y dieron permiso (YuNet + SFace)' : 'no (faltan los modelos en modelos/caras)'}`);
   console.log(`   cuadros al LLM: ${VISION_AL_LLM && LLM === 'gemini' ? 'sí, 1 por segundo' : 'no (a propósito: los objetos le llegan con que_veo y que_hay)'}`);
 });

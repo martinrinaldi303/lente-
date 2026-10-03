@@ -11,6 +11,7 @@
 // ⚠️ Que el HUD nombre OTRA cosa no siempre es un error: en una foto con una persona
 // y un celular chico al costado, «persona» es una respuesta razonable.
 
+import jpeg from 'jpeg-js';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -36,6 +37,8 @@ let hud = {}, cajas = { lista: [] };
 ws.on('message', (d, binario) => { if (!binario) { const m = JSON.parse(d); if (m.t === 'hud') hud = m; if (m.t === 'cajas') cajas = m; } });
 await new Promise((ok, mal) => { ws.on('open', ok); ws.on('error', () => mal(new Error('no hay cerebro: ¿corre «npm start»?'))); });
 const espera = (ms) => new Promise(r => setTimeout(r, ms));
+// Un cuadro gris liso de 640×480: entre escena y escena, para que no arrastre los votos de la anterior.
+const GRIS = jpeg.encode({ width: 640, height: 480, data: new Uint8Array(640 * 480 * 4).fill(128) }, 80).data;
 
 let bien = 0, otra = 0, callo = 0, loVio = 0, n = 0, conMedida = 0, conRecuadro = 0;
 const otras = new Map();
@@ -53,6 +56,7 @@ for (const idImagen of fotos) {
   else if (dijo === null) callo++;
   else { otra++; otras.set(dijo, (otras.get(dijo) ?? 0) + 1); }
   // Entre foto y foto, cinco cuadros grises: que no arrastre los votos de la anterior.
+  for (let i = 0; i < 5; i++) { ws.send(Buffer.concat([Buffer.from([BIN_JPEG]), GRIS])); await espera(330); }
 }
 ws.close();
 console.log(`${esperado}: en ${n} escenas, el detector lo marcó en ${loVio}.`);

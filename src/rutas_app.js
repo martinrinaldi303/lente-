@@ -43,7 +43,8 @@ export function rutasDeApp({ cuentas, memoriaDe }) {
   const r = express.Router();
   const responder = (res, estado, cuerpo) => res.status(estado).json(cuerpo);
 
-  // Mismas reglas que las rutas de la cuenta: borrar exige JSON y la misma página.
+  // Borrar exige que el pedido venga de la misma página (si trae Origin). La cookie de la
+  // sesión es SameSite=Strict: otra página tampoco puede mandarla.
   r.use((req, res, next) => {
     if (req.method === 'GET') return next();
     const origen = req.headers.origin;

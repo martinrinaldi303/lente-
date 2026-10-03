@@ -39,7 +39,7 @@ export function coseno(a, b) {
   return p / Math.sqrt(na * nb || 1);
 }
 const maximo = (v, lista = []) => lista.reduce((m, u) => Math.max(m, coseno(v, u)), -1);
-function iou(a, b) {
+export function iou(a, b) {
   const w = Math.min(a.x0 + a.ancho, b.x0 + b.ancho) - Math.max(a.x0, b.x0), h = Math.min(a.y0 + a.alto, b.y0 + b.alto) - Math.max(a.y0, b.y0);
   return w > 0 && h > 0 ? (w * h) / (a.ancho * a.alto + b.ancho * b.alto - w * h) : 0;
 }

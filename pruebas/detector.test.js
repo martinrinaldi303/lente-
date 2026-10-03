@@ -9,7 +9,9 @@ import { BIN_JPEG, empaquetar } from '../src/protocolo.js';
 import { DIM, FUENTE } from '../src/rasgos.js';
 import { RedObjetos } from '../src/red_objetos.js';
 import { Permanencia } from '../src/permanencia.js';
-import { RADIO_DE_MIRADA, Seguimiento, confirmar, dudosasDe, principalDe, renglonesDeMedida } from '../src/seguimiento.js';
+import { RADIO_DE_MIRADA, Seguimiento, cajaEntera, confirmar, dudosasDe, principalDe, renglonesDeMedida } from '../src/seguimiento.js';
+import { EXTRACTORES } from '../src/extractores.js';
+import { Ejemplos } from '../src/parecido.js';
 import { Sesion } from '../src/sesion.js';
 import { azar, cuadroJpeg, imagen } from './imagenes.js';
 
@@ -166,7 +168,7 @@ test('cuánto se superponen dos recuadros', () => {
 });
 
 // ── En la sesión ────────────────────────────────────────────────────────────
-function armar({ detecciones, clasificador = 'persona', identificar } = {}) {
+function armar({ detecciones, clasificador = 'persona', identificar, ejemplos = null } = {}) {
   const estado = { detecciones, t: 0 };
   const json = [], mediciones = [];
   const sesion = new Sesion({
@@ -174,7 +176,7 @@ function armar({ detecciones, clasificador = 'persona', identificar } = {}) {
     // `clasificador` puede ser un nombre fijo o una función del recorte que le toca mirar.
     conjunto: { clases: [], predecir: async (img, region) => ({ indice: 0, nombre: typeof clasificador === 'function' ? clasificador(region) : clasificador, confianza: 0.95 }) },
     detector: { detectar: async () => { await tic(); return estado.detecciones; } },
-    reloj: () => estado.t, identificar,
+    reloj: () => estado.t, identificar, ejemplos,
     registro: { reconocimiento() {}, tarjeta() {}, identificacion() {}, medicion: m => mediciones.push(m) },
   });
   const cuadro = jpeg.encode({ ...imagen('taza', azar(71)), width: 320, height: 240 }, 80).data;   // 320×240
@@ -184,6 +186,32 @@ function armar({ detecciones, clasificador = 'persona', identificar } = {}) {
   const hud = () => json.filter(m => m.t === 'hud').at(-1);
   return { sesion, estado, json, mediciones, mostrar, hud };
 }
+
+test('lo que el detector nombra y no se parece a esa clase: «no lo conozco», y no entra en la escena', async () => {
+  // La lata de desodorante que salía «celular 93 %» (Martín, 3-oct-2026). Los ejemplos
+  // de «celular» son el recorte dado vuelta: no se parece en nada.
+  const persona = det('persona', 80, 10, 200, 225), celular = det('celular', 90, 80, 60, 110, 0.93);
+  const img = jpeg.decode(jpeg.encode({ ...imagen('taza', azar(71)), width: 320, height: 240 }, 80).data, { useTArray: true });
+  const v = await EXTRACTORES[FUENTE].extraer(img, cajaEntera(celular.caja, img));
+  const ejemplosDe = (vector) => new Ejemplos(new Map([['celular', [vector]]]), { fuente: FUENTE, dim: DIM });
+
+  const lejos = armar({ detecciones: [persona, celular], ejemplos: ejemplosDe(Array.from(v, x => -x - 1)) });
+  await lejos.mostrar(5);
+  assert.deepEqual(lejos.hud(), { t: 'hud', titulo: 'No lo conozco', lineas: ['Preguntame «¿qué es?»', 'o enseñámelo'], pie: 'veo: ?' });
+  const q = lejos.sesion.ejecutar('que_veo');
+  assert.equal(q.objeto, null);
+  assert.equal(q.desconocido, true);
+  const cajas = lejos.json.filter(m => m.t === 'cajas').at(-1);
+  assert.equal(cajas.mirado.desconocido, true);
+  assert.deepEqual([cajas.mirado.x0, cajas.mirado.y0], [92, 80]);   // de a 4 px
+  assert.ok(!cajas.escena.objetos.some(o => o.nombre === 'celular'));
+  assert.ok(!cajas.lista.some(o => o.nombre === 'celular'));
+
+  // Si se parece, se nombra como siempre.
+  const cerca = armar({ detecciones: [persona, celular], ejemplos: ejemplosDe(v) });
+  await cerca.mostrar(5);
+  assert.equal(cerca.hud().pie, 'creo: celular 93%');
+});
 
 test('con el celular en la mano junto a la cara, las gafas dicen «celular» y no «persona»', async () => {
   const persona = det('persona', 80, 10, 200, 225), celular = det('celular', 90, 80, 60, 110, 0.93);
