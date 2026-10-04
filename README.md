@@ -13,7 +13,7 @@ Si algo de acá no coincide con el código, **gana el código**.
   fotos que no vio: **89,9 % ± 0,8** (azar: 3,2 %). Sin DINOv2 bajado, votan dos extractores hechos a mano.
 - **Dice «No lo conozco»** cuando lo que ve no se parece a ninguna de sus clases, en vez de
   inventarle el nombre de la más cercana.
-- **Detector (YOLOS-tiny)**: dónde está cada cosa, con zoom en el centro de la mirada. La
+- **Detector (D-FINE-S, con un umbral por clase)**: dónde está cada cosa, con zoom en el centro de la mirada. La
   pantalla nombra UNA cosa, la que se mira; distancia aproximada a vehículos, personas y
   cosas de tamaño típico.
 - **Aprende objetos tuyos** con 12 cuadros («Enseñar») y los guarda en MySQL, por cuenta.
@@ -66,13 +66,16 @@ npm test
 |---|---|---|
 | Claves y contraseña de la base | `.env` | Copiar `.env.example` y completar. **No se sube nunca** |
 | DINOv2-small (24,5 MB) | `modelos/dinov2-small/model_quantized.onnx` | Repo `Xenova/dinov2-small` de Hugging Face. Sin él las gafas andan con los dos extractores propios |
-| Detector YOLOS-tiny (9,7 MB) | `modelos/yolos-tiny/model_quantized.onnx` | Repo `Xenova/yolos-tiny` de Hugging Face. Sin él no hay recuadros, ni distancias, ni aviso de vehículos |
+| Detector D-FINE-S (41,5 MB, Apache 2.0) | `modelos/dfine-s/model.onnx` (y su `config.json`) | Repo `onnx-community/dfine_s_coco-ONNX` de Hugging Face. Es el que se usa; sus umbrales por clase sí están en el repo (`estado/umbrales_detector_dfine-s.json`) |
+| Detector YOLOS-tiny (9,7 MB) | `modelos/yolos-tiny/model_quantized.onnx` | Repo `Xenova/yolos-tiny`. El de antes: se usa si falta D-FINE (o con `DETECTOR=yolos`). Sin ninguno no hay recuadros, ni distancias, ni aviso de vehículos |
+| CLIP ViT-B/32 (155 MB, MIT) | `modelos/clip-b32/` (`vision_model_quantized.onnx`, `text_model_quantized.onnx`, `vocab.json`, `merges.txt`) | Repo `Xenova/clip-vit-base-patch32`. Sin él no hay tercera opinión ni «Parece: …» |
 | Caras: YuNet (232 KB, MIT) y SFace (38,7 MB, Apache 2.0) | `modelos/caras/face_detection_yunet_2023mar.onnx` y `modelos/caras/face_recognition_sface_2021dec.onnx` | Repos `opencv/face_detection_yunet` y `opencv/face_recognition_sface` de Hugging Face (OpenCV Zoo). Sin ellos no se reconoce a nadie: «Personas conocidas» queda apagado |
 | Caltech-256, COCO (val2017 y parte de train2017), LVIS y las piezas de PC de Kaggle | `datos/` | Para reentrenar. Ver `PLAN.md` |
 | Los rasgos ya calculados | `datos/rasgos/` | Salen al reentrenar (`exportar_rasgos.js` y `ejemplos_del_detector.js`). Sin ellos no hay «No lo conozco» y las correcciones al detector piden parecerse más |
 | El entrenador compilado | `cpp/entrenar.exe` (`cpp/entrenar` en Linux) | `npm run compilar` (g++ de MSYS2 en Windows, el g++ del sistema en Linux) |
 | La base `gafas` | MySQL de XAMPP | La crea sola al arrancar si hay usuario; el esquema está en `docs/esquema_gafas.sql`. Es opcional |
 | Lo que le enseñaste | `estado/red_dino_s_384.json` y la base | Es tuyo: no se sube |
+| Tus fotos de prueba y de entrenamiento | `datos/propias/` | Se juntan solas con «Acertó» / «Se equivocó» en Visión. `npm run medir-propias` dice cuánto acierta con ellas |
 | Lo que recuerda y tus pruebas reales | `estado/memoria.json` (y `memoria_u<cuenta>.json`), `estado/pruebas_reales.jsonl` | Se arman solos al usarlo |
 | La configuración del firmware | `firmware/gafas_xiao/config.h` | Copiar `config.ejemplo.h` y completar |
 | Manuales de iFixit | `guias/myfixit/` | `npm run importar-myfixit -- <archivo de MyFixit>` |

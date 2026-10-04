@@ -6,6 +6,13 @@
       "runtimeExecutable": "node",
       "runtimeArgs": ["servidor.js"],
       "port": 8787
+    },
+    {
+      "name": "cerebro-yolos",
+      "runtimeExecutable": "node",
+      "runtimeArgs": ["servidor.js"],
+      "env": { "DETECTOR": "yolos", "PUERTO": "8788" },
+      "port": 8788
     }
   ]
 }

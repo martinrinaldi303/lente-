@@ -31,6 +31,7 @@
 //                                  píxeles del cuadro); con todas:true en vez de caja, todos los de
 //                                  esa clase sin cara y fuera del centro («la ropa no es persona»)
 //     {t:"olvidar_correcciones"}   borra todo lo que esta cuenta le corrigió al detector
+//     {t:"nombre", nombre, en}     «sabé que existen los marcadores»: un nombre nuevo para CLIP (en: en inglés)
 //   Texto (JSON), cerebro → gafas
 //     {t:"hud", titulo, lineas, pie}   lo que se dibuja; ya viene cortado a medida
 //     {t:"callar"}                     el usuario interrumpió: vaciar el parlante

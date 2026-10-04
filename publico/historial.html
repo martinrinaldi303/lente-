@@ -181,7 +181,7 @@ function estadoDelSistema(salud, yo) {
   $('estado').replaceChildren(
     fila('Anteojos', `${yo.anteojos.length} vinculado${yo.anteojos.length === 1 ? '' : 's'}`, conectados > 0, conectados ? `${conectados} conectado${conectados > 1 ? 's' : ''}` : 'ninguno conectado'),
     fila('Base de datos', 'MySQL de XAMPP', Boolean(salud.base), salud.base ? 'Conectada' : 'Apagada'),
-    fila('Detector', 'YOLOS-tiny, 80 clases', Boolean(salud.detector), salud.detector ? 'Activo' : 'No instalado'),
+    fila('Detector', `${salud.detector_nombre ?? 'YOLOS-tiny'}, 80 clases`, Boolean(salud.detector), salud.detector ? 'Activo' : 'No instalado'),
     fila('Red general', salud.red_general ? `${salud.red_general.clases} clases` : 'sin entrenar', Boolean(salud.red_general), salud.red_general ? 'Cargada' : 'Falta'),
     fila('LLM', salud.llm === 'gemini' ? 'Gemini Live' : salud.llm === 'deepseek' ? 'DeepSeek' : 'sin clave', Boolean(salud.voz), salud.voz ? 'Disponible' : 'Apagado'));
 }

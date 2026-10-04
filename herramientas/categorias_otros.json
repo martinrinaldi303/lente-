@@ -1,0 +1,362 @@
+{
+  "001.ak47": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "004.baseball-bat": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "006.basketball-hoop": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "008.bathtub": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "011.billiards": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "013.birdbath": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "017.bowling-ball": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "025.cactus": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "026.cake": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "029.cannon": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "035.cereal-box": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "044.comet": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "050.covered-wagon": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "054.diamond-ring": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "059.drinking-straw": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "063.electric-guitar-101": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "066.ewer-101": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "069.fighter-jet": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "073.fireworks": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "076.football-helmet": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "077.french-horn": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "079.frisbee": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "082.galaxy": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "088.golf-ball": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "097.harmonica": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "098.harp": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "103.hibiscus": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "104.homer-simpson": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "106.horseshoe-crab": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "107.hot-air-balloon": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "110.hourglass": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "122.kayak": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "123.ketch-101": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "130.license-plate": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "136.mandolin": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "137.mars": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "140.menorah-101": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "143.minaret": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "144.minotaur": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "147.mushroom": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "160.pez-dispenser": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "162.picnic-table": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "165.pram": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "167.pyramid": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "169.radio-telescope": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "170.rainbow": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "172.revolver-101": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "177.saturn": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "181.segway": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "184.sheet-music": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "185.skateboard": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "188.smokestack": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "193.soccer-ball": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "204.sunflower-101": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "205.superman": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "206.sushi": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "209.sword": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "211.tambourine": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "215.telephone-box": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "216.tennis-ball": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "223.top-hat": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "225.tower-pisa": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "226.traffic-light": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "228.triceratops": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "229.tricycle": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "230.trilobite-101": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "233.tuning-fork": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "242.watermelon": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "243.welding-mask": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "244.wheelbarrow": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "248.yarmulke": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  },
+  "249.yo-yo": {
+    "clase": "nada",
+    "max": 15,
+    "soloEntrenamiento": true
+  }
+}

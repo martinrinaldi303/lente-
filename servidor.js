@@ -15,8 +15,9 @@
 //   node servidor.js          y abrir http://localhost:8787 (Google sólo acepta ese origen)
 
 import express from 'express';
+import jpeg from 'jpeg-js';
 import { timingSafeEqual } from 'node:crypto';
-import { appendFileSync, existsSync, rmSync } from 'node:fs';
+import { appendFileSync, existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { createServer } from 'node:http';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -29,11 +30,14 @@ import { crearCaras } from './src/caras.js';
 import { Conocidos, rutasDeConocidos } from './src/conocidos.js';
 import { Correcciones, cargarPositivos, leerCategorias } from './src/correcciones.js';
 import { Ejemplos } from './src/parecido.js';
+import { cargarVocabulario, crearClip } from './src/clip.js';
+import { VOCABULARIO } from './src/vocabulario_clip.js';
 import { Conjunto, votantes } from './src/conjunto.js';
 import { crearDetector } from './src/detector.js';
 import { extractoresDisponibles } from './src/extractores.js';
 import { cargarGuias, resumenDeGuias } from './src/guias.js';
 import { Memoria } from './src/memoria.js';
+import { Muestras } from './src/muestras.js';
 import { FUENTE } from './src/rasgos.js';
 import { FUENTE as DINO } from './src/rasgos_dino.js';
 import { RedObjetos } from './src/red_objetos.js';
@@ -160,6 +164,45 @@ const positivos = cargarPositivos({ dirRasgos: join(RAIZ, 'datos', 'rasgos'), ca
                                     fuente: extractorPersonal.fuente, dim: extractorPersonal.dim });
 // Para decir «no sé qué es» (src/parecido.js): cómo se ve de verdad cada clase.
 const ejemplos = Ejemplos.cargar(join(RAIZ, 'datos', 'rasgos'), { fuente: extractorPersonal.fuente });
+// CLIP (src/clip.js): compara lo que se ve con nombres escritos. La tercera opinión, y
+// «Parece: …» para lo que ninguna red conoce. Sin los modelos, las gafas andan igual.
+const clip = await crearClip().catch((e) => { console.warn(`⚠️ CLIP: ${e.message}`); return null; });
+const vocabularioBase = clip ? await cargarVocabulario(clip, VOCABULARIO, join(DIR_ESTADO, 'vocabulario_clip.json')) : null;
+// Los nombres que suma cada cuenta («sabé que existen los marcadores»), en estado/.
+const archivoNombres = (usuarioId) => join(DIR_ESTADO, `nombres_u${usuarioId}.json`);
+async function vocabularioDe(usuarioId) {
+  if (!vocabularioBase) return null;
+  const v = vocabularioBase.copia();
+  let propios = [];
+  try { propios = JSON.parse(readFileSync(archivoNombres(usuarioId), 'utf8')); } catch { /* todavía no sumó ninguno */ }
+  for (const n of propios) await v.sumar(clip, { es: n.es, en: n.en, clase: null, propio: true }).catch(() => {});
+  return v;
+}
+// Lo que cada cuenta dijo que NO era (sus fotos de «se equivocó» y sus correcciones), como
+// vectores del extractor personal: clase → [vector]. Se arma una vez por cuenta, y las
+// sesiones de esa cuenta comparten el mismo Map (lo nuevo lo ven todas).
+const negativos = new Map();
+async function negativosDe(usuarioId) {
+  if (negativos.has(usuarioId)) return negativos.get(usuarioId);
+  const porClase = new Map(), indice = muestras.indice();
+  negativos.set(usuarioId, porClase);
+  for (const m of muestras.listar().filter(m => m.usuario === `u${usuarioId}`)) {
+    const mostrado = indice.get(m.archivo)?.mostrado;
+    const clase = m.noEs ? m.clase : mostrado && mostrado !== m.clase ? mostrado : null;
+    if (!clase || clase === 'persona') continue;
+    try {
+      const img = jpeg.decode(readFileSync(m.ruta), { useTArray: true, maxResolutionInMP: 4 });
+      const v = await extractorPersonal.extraer(img, { x0: 0, y0: 0, ancho: img.width, alto: img.height });
+      if (!porClase.has(clase)) porClase.set(clase, []);
+      porClase.get(clase).push(v);
+    } catch { /* una foto rota no frena nada */ }
+  }
+  return porClase;
+}
+const guardarNombresDe = (usuarioId) => (lista) => {
+  try { writeFileSync(archivoNombres(usuarioId), JSON.stringify(lista, null, 2)); }
+  catch (e) { console.warn(`⚠️ no se pudieron guardar los nombres: ${e.message}`); }
+};
 const correccionesDe = async (usuarioId) => (correcciones
   ? correcciones.deUsuario(usuarioId, extractorPersonal.fuente, extractorPersonal.dim).catch(() => new Map()) : new Map());
 // Las conexiones de gafas abiertas, con su dueño: { ws, dueno }. Sirve para mostrar en el
@@ -185,6 +228,13 @@ async function recargarSinCuenta() {
   if (red.clases.length) red.entrenar();
   red.guardar(DIR_ESTADO);
 }
+// Las fotos de esta cámara con su etiqueta, de cada «acertó / se equivocó» y de cada
+// corrección (src/muestras.js): para reentrenar y para medir en la casa. Van a datos/propias.
+const muestras = new Muestras();
+const guardarMuestraDe = (usuarioId) => (m) => {
+  try { return muestras.guardar({ ...m, usuarioId }); }
+  catch (e) { console.warn(`⚠️ no se pudo guardar la foto: ${e.message}`); return null; }
+};
 // Las guías guardadas (guias/): primeros auxilios, hogar y lo importado de MyFixit.
 const guias = cargarGuias(join(RAIZ, 'guias'));
 // Cada «acertó / se equivocó» del emulador, un renglón JSON. Se resume con
@@ -231,7 +281,7 @@ app.get('/panel', (_req, res) => res.redirect('/panel.html'));
 app.use('/api', rutasDeConocidos({ cuentas, conocidos, caras, alCambiar: recargarConocidos }));
 // Historial y memoria de objetos de la cuenta (antes que las rutas de la cuenta, que
 // exigen JSON en todo lo que no es GET).
-app.use('/api', rutasDeApp({ cuentas, memoriaDe }));
+app.use('/api', rutasDeApp({ cuentas, memoriaDe, muestras }));
 app.use('/api', rutasDeCuentas({
   cuentas, registroAbierto: REGISTRO_ABIERTO, verificarGoogle, googleClientId: GOOGLE_CLIENT_ID || null,
   // Lo que el panel muestra del cerebro: la red de ese usuario y qué anteojos están conectados.
@@ -263,6 +313,7 @@ app.use('/api', rutasDeCuentas({
 app.get('/salud', (_req, res) => res.json({
   ok: true, voz: Boolean(CLAVE), llm: LLM || null, modo: fabricaVoz?.modo ?? null, modelo: CLAVE ? MODELO : null,
   red: red.clave, objetos: red.resumen(), pide_token: Boolean(TOKEN), base: Boolean(base), cuentas: Boolean(cuentas), detector: Boolean(detector),
+  detector_nombre: detector?.nombre ?? null, clip: Boolean(clip),
   guias: guias.length, objetos_recordados: memoria.vistos.size, leer: Boolean(leer), caras: Boolean(caras),
   red_general: conjunto && {
     clases: conjunto.clases.length,
@@ -332,7 +383,9 @@ wss.on('connection', (ws, req) => {
       guardarRed: guardarRedDe(usuarioId), visionAlLlm: VISION_AL_LLM,
       memoria: memoriaDe(usuarioId), guias, leer, anotarEvaluacion: anotarEvaluacionDe(usuarioId),
       caras, conocidos: await conocidosDe(usuarioId), zoom: true,
-      correcciones: await correccionesDe(usuarioId), positivos, ejemplos,
+      correcciones: await correccionesDe(usuarioId), positivos, ejemplos, guardarMuestra: guardarMuestraDe(usuarioId),
+      clip, vocabulario: await vocabularioDe(usuarioId), guardarNombres: guardarNombresDe(usuarioId),
+      negativos: await negativosDe(usuarioId),
       guardarCorreccion: correcciones ? (clase, fuente, v) => correcciones.agregar(usuarioId, clase, fuente, v) : null,
       olvidarCorrecciones: correcciones ? () => correcciones.olvidar(usuarioId).catch(() => 0) : null,
     });
@@ -403,12 +456,14 @@ http.listen(PUERTO, HOST, () => {
   console.log(`   red general: ${conjunto
     ? `${conjunto.clases.length} clases, votan ${conjunto.miembros.map(m => m.extractor.fuente).join(' + ')}`
     : 'sin entrenar (npm run entrenar)'}`);
-  console.log(`   detector: ${detector ? `YOLOS-tiny, ${detector.clases.length} clases, con zoom en la mirada; mide con FOV diagonal de ${FOV_DIAGONAL}°` : 'APAGADO (falta modelos/yolos-tiny)'}`);
+  console.log(`   detector: ${detector ? `${detector.nombre}${detector.calibrado ? ', con un umbral por clase' : ' (sin calibrar)'}, ${detector.clases.length} clases, con zoom en la mirada; mide con FOV diagonal de ${FOV_DIAGONAL}°` : 'APAGADO (falta el modelo en modelos/)'}`);
   console.log(`   marca y modelo de aparatos: ${CLAVE ? `a pedido, con ${MODELO_VISION}` : 'APAGADO (falta la clave)'}`);
   console.log(`   leer texto: ${leer ? `a pedido, con ${MODELO_VISION}` : 'APAGADO (falta la clave)'}`);
   console.log(`   guías guardadas: ${guias.length} · objetos recordados: ${memoria.vistos.size}`);
   console.log(`   correcciones al detector: con ${[...positivos.values()].reduce((s, l) => s + l.length, 0)} ejemplos de verdad de ${positivos.size} clases para comparar`);
   console.log(`   «no lo conozco»: ${ejemplos ? `compara con ${ejemplos.total} ejemplos de ${ejemplos.porClase.size} clases` : 'no (faltan los ejemplos en datos/rasgos)'}`);
+  console.log(`   CLIP: ${clip ? `sí, ${vocabularioBase.entradas.length} nombres (tercera opinión y «Parece: …»)` : 'no (faltan los modelos en modelos/clip-b32)'}`);
+  console.log(`   fotos propias para entrenar: ${Object.values(muestras.resumen()).reduce((s, c) => s + c.entrenamiento + c.prueba, 0)} en datos/propias`);
   console.log(`   personas conocidas: ${caras ? 'sí, sólo las que se cargaron solas y dieron permiso (YuNet + SFace)' : 'no (faltan los modelos en modelos/caras)'}`);
   console.log(`   cuadros al LLM: ${VISION_AL_LLM && LLM === 'gemini' ? 'sí, 1 por segundo' : 'no (a propósito: los objetos le llegan con que_veo y que_hay)'}`);
 });

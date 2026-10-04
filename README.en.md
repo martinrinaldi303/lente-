@@ -18,7 +18,7 @@ anything here disagrees with the code, **the code wins**.
   DINOv2 model, two hand-made feature extractors vote instead.
 - **Says "I don't know it"** when what it sees does not look like any of its classes,
   instead of naming the closest one.
-- **Detector (YOLOS-tiny)**: where each thing is, with a zoom on the centre of the gaze.
+- **Detector (D-FINE-S, with a threshold per class)**: where each thing is, with a zoom on the centre of the gaze.
   The display names ONE thing, the one being looked at; approximate distance to vehicles,
   people and things of typical size.
 - **Learns your own objects** from 12 frames ("Enseñar"), stored in MySQL, per account.
@@ -77,7 +77,9 @@ npm test
 |---|---|---|
 | API keys and database password | `.env` | Copy `.env.example` and fill it in. **Never commit it** |
 | DINOv2-small (24.5 MB) | `modelos/dinov2-small/model_quantized.onnx` | Hugging Face repo `Xenova/dinov2-small` |
-| YOLOS-tiny detector (9.7 MB) | `modelos/yolos-tiny/model_quantized.onnx` | Hugging Face repo `Xenova/yolos-tiny` |
+| D-FINE-S detector (41.5 MB, Apache 2.0) | `modelos/dfine-s/model.onnx` (and its `config.json`) | Hugging Face repo `onnx-community/dfine_s_coco-ONNX`. The one in use; its per-class thresholds are in the repo |
+| YOLOS-tiny detector (9.7 MB) | `modelos/yolos-tiny/model_quantized.onnx` | Hugging Face repo `Xenova/yolos-tiny`; the fallback |
+| CLIP ViT-B/32 (155 MB, MIT) | `modelos/clip-b32/` | Hugging Face repo `Xenova/clip-vit-base-patch32` |
 | Caltech-256, COCO (val2017 and part of train2017), LVIS and the Kaggle PC parts | `datos/` | For retraining; see `PLAN.md` |
 | The computed features | `datos/rasgos/` | Produced when retraining. Without them there is no "I don't know it", and corrections to the detector need a closer match |
 | Face models: YuNet and SFace | `modelos/caras/` | OpenCV Zoo on Hugging Face. Without them "Known people" is off |

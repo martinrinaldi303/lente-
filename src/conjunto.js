@@ -11,6 +11,7 @@
 // ⚠️ Lo que esto no arregla: dos votantes que se equivocan en las mismas fotos no
 // suman nada. El voto sirve cuando los extractores miran cosas DISTINTAS.
 
+import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { EXTRACTORES } from './extractores.js';
 import { regionCentral } from './imagen.js';
@@ -96,4 +97,11 @@ export function pesoDe(red) {
   if (!valores.length) return 1;
   const validacion = valores.reduce((a, b) => a + b, 0) / valores.length;
   return Math.max(1e-6, validacion - (red.medicion.azar ?? 0)) ** EXPONENTE;
+}
+
+// Un umbral por clase para lo que dice la red general (herramientas/umbrales_general.js):
+// { clase: confianza mínima }. null si no se calculó.
+export function leerUmbralesGenerales(dirEstado) {
+  try { return JSON.parse(readFileSync(join(dirEstado, 'umbrales_general.json'), 'utf8')).umbrales ?? null; }
+  catch { return null; }
 }

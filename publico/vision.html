@@ -186,6 +186,13 @@
           <input id="real" class="flex-1 min-w-[8rem] h-8 bg-surface-dim rounded px-space-sm text-on-surface placeholder:text-outline-variant focus:outline-none" placeholder="si no, ¿qué era?" aria-label="Qué era en realidad"/>
           <button id="fallo" type="button" class="h-8 px-space-sm rounded bg-error-container/20 text-error font-label-sm text-label-sm">✗ Se equivocó</button>
         </div>
+        <p class="font-body-sm text-body-sm text-outline">Cada prueba guarda la foto de lo que miraba (nunca de personas): con esas fotos de tu casa se reentrena y se mide. <span id="muestras" class="font-data-mono text-on-surface-variant"></span></p>
+        <form id="fNombre" class="flex items-center gap-space-xs flex-wrap" title="Para que las gafas sepan que existe una cosa sin mostrársela: si ven algo que no conocen y se parece, dicen «Parece: …». Nada de personas.">
+          <span class="font-label-sm text-label-sm text-outline uppercase">Nombre nuevo:</span>
+          <input id="nombreEs" class="flex-1 min-w-[7rem] h-8 bg-surface-dim rounded px-space-sm text-on-surface placeholder:text-outline-variant focus:outline-none" placeholder="marcador" aria-label="Nombre en castellano"/>
+          <input id="nombreEn" class="flex-1 min-w-[7rem] h-8 bg-surface-dim rounded px-space-sm text-on-surface placeholder:text-outline-variant focus:outline-none" placeholder="en inglés: marker pen" aria-label="El mismo nombre en inglés"/>
+          <button type="submit" class="h-8 px-space-sm rounded bg-surface-container-high text-on-surface font-label-sm text-label-sm">Sumar</button>
+        </form>
       </section>
     </div>
   </div>
@@ -366,6 +373,24 @@ $('fTexto').onsubmit = (e) => {
 $('fDonde').onsubmit = (e) => { e.preventDefault(); const n = $('donde').value.trim(); if (!n) return App.avisar('Escribí qué objeto buscás.'); cliente.enviarJson({ t: 'donde', nombre: n }); };
 $('fLugar').onsubmit = (e) => { e.preventDefault(); const n = $('lugar').value.trim(); cliente.enviarJson({ t: 'lugar', nombre: n }); anotar('SISTEMA', n ? `lugar: ${n}` : 'lugar borrado'); };
 $('cargarGuia').onclick = () => { const id = $('guiaLocal').value; if (!id) return App.avisar('Elegí una guía de la lista.'); cliente.enviarJson({ t: 'guia_local', consulta: id }); anotar('SISTEMA', `guía cargada: ${$('guiaLocal').selectedOptions[0].textContent}`); };
+$('fNombre').onsubmit = (e) => {
+  e.preventDefault();
+  const nombre = $('nombreEs').value.trim(), en = $('nombreEn').value.trim();
+  if (!nombre || !en) return App.avisar('Escribí el nombre y cómo se dice en inglés (CLIP sólo entiende inglés).');
+  cliente.enviarJson({ t: 'nombre', nombre, en });
+  anotar('SISTEMA', `nombre nuevo: ${nombre} (${en})`);
+  $('nombreEs').value = $('nombreEn').value = '';
+};
+// Cuántas fotos tuyas hay: se actualiza después de cada prueba.
+async function contarMuestras() {
+  try {
+    const { por_clase } = await App.api('GET', 'muestras');
+    const t = Object.values(por_clase).reduce((s, c) => ({ e: s.e + c.entrenamiento, p: s.p + c.prueba }), { e: 0, p: 0 });
+    $('muestras').textContent = t.e + t.p ? `Fotos tuyas: ${t.e} para entrenar, ${t.p} de prueba, de ${Object.keys(por_clase).length} clases.` : 'Todavía no hay fotos tuyas.';
+  } catch { $('muestras').textContent = ''; }
+}
+cliente.on('aviso', (m) => { if (/^Anotado/.test(m.texto)) contarMuestras(); });
+cliente.on('hud', (m) => { if (/^Anotado/.test(m.lineas?.[0] ?? '')) setTimeout(contarMuestras, 300); });
 $('acerto').onclick = () => cliente.enviarJson({ t: 'evaluar', acierto: true });
 $('fallo').onclick = () => { const real = $('real').value.trim(); if (!real) { App.avisar('Escribí qué era en realidad, así la prueba sirve.'); return $('real').focus(); } cliente.enviarJson({ t: 'evaluar', acierto: false, real }); $('real').value = ''; };
 
@@ -389,9 +414,10 @@ App.montar('vision').then(({ salud: s }) => {
   salud = s;
   $('red').textContent = s.red_general ? `${s.red_general.clases} clases` : 'sin red general';
   $('base').textContent = s.base ? 'MySQL' : 'apagada';
-  $('detector').textContent = s.detector ? 'YOLOS-tiny · activo' : 'no instalado';
+  $('detector').textContent = s.detector ? `${s.detector_nombre ?? 'YOLOS-tiny'} · activo` : 'no instalado';
   $('llm').textContent = s.llm === 'gemini' ? 'Gemini Live' : s.llm === 'deepseek' ? 'DeepSeek (por escrito)' : 'apagado';
   cliente.conectar();
+  contarMuestras();
 }).catch((e) => App.avisar(e.message, 'error'));
 </script>
 </body>
