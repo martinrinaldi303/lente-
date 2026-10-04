@@ -14,6 +14,7 @@
     "documento": "node herramientas/hacer_documento.js",
     "test": "node herramientas/correr_pruebas.js",
     "pruebas-reales": "node herramientas/resumir_pruebas.js",
+    "medir-propias": "node herramientas/medir_propias.js",
     "importar-myfixit": "node herramientas/importar_myfixit.js"
   },
   "dependencies": {

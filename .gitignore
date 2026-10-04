@@ -10,6 +10,8 @@ node_modules/
 estado/*
 !estado/red_general_*.json
 !estado/medicion_conjunto.json
+# Los umbrales calibrados del detector y de la red general: salen de medir, no de usarlo.
+!estado/umbrales_*.json
 
 # ── Binarios y compilados ─────────────────────────────────
 *.exe

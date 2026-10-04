@@ -17,6 +17,7 @@ import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { WebSocket } from 'ws';
 import { BIN_JPEG } from '../src/protocolo.js';
+import { CLASES_DEL_DETECTOR } from '../src/detector.js';
 
 const RAIZ = dirname(dirname(fileURLToPath(import.meta.url)));
 const NOMBRE = { 'cell phone': 'celular', car: 'auto', motorcycle: 'moto', bus: 'colectivo', truck: 'camion', bicycle: 'bicicleta',
@@ -30,6 +31,11 @@ const dirCoco = join(RAIZ, 'datos', 'coco');
 const a = JSON.parse(readFileSync(join(dirCoco, 'annotations', 'instances_val2017.json'), 'utf8'));
 const id = a.categories.find(c => c.name === clase).id;
 const archivoDe = new Map(a.images.map(i => [i.id, i.file_name]));
+// Lo anotado en cada foto, con los nombres de las gafas: para saber si lo que dijo la
+// pantalla, aunque no sea la clase buscada, está de verdad en la foto.
+const nombreDe = new Map(a.categories.slice().sort((x, y) => x.id - y.id).map((c, i) => [c.id, CLASES_DEL_DETECTOR[i]]));
+const anotadas = new Map();
+for (const an of a.annotations) (anotadas.get(an.image_id) ?? anotadas.set(an.image_id, new Set()).get(an.image_id)).add(nombreDe.get(an.category_id));
 const fotos = [...new Set(a.annotations.filter(an => an.category_id === id && !an.iscrowd && an.bbox[2] >= 64 && an.bbox[3] >= 64).map(an => an.image_id))].slice(0, cuantas);
 
 const ws = new WebSocket(process.env.CEREBRO ?? 'ws://127.0.0.1:8787/ws/gafas');
@@ -40,7 +46,7 @@ const espera = (ms) => new Promise(r => setTimeout(r, ms));
 // Un cuadro gris liso de 640×480: entre escena y escena, para que no arrastre los votos de la anterior.
 const GRIS = jpeg.encode({ width: 640, height: 480, data: new Uint8Array(640 * 480 * 4).fill(128) }, 80).data;
 
-let bien = 0, otra = 0, callo = 0, loVio = 0, n = 0, conMedida = 0, conRecuadro = 0;
+let bien = 0, otra = 0, callo = 0, loVio = 0, n = 0, conMedida = 0, conRecuadro = 0, otraEsta = 0, otraNoSeSabe = 0;
 const otras = new Map();
 for (const idImagen of fotos) {
   const jpg = readFileSync(join(dirCoco, 'val2017', archivoDe.get(idImagen)));
@@ -54,13 +60,18 @@ for (const idImagen of fotos) {
   if (cajas.mirado) conRecuadro++;
   if (dijo === esperado) { bien++; if ((hud.lineas ?? []).some(l => l.startsWith('A ≈'))) conMedida++; }
   else if (dijo === null) callo++;
-  else { otra++; otras.set(dijo, (otras.get(dijo) ?? 0) + 1); }
+  else {
+    otra++; otras.set(dijo, (otras.get(dijo) ?? 0) + 1);
+    if (!CLASES_DEL_DETECTOR.includes(dijo)) otraNoSeSabe++;
+    else if (anotadas.get(idImagen)?.has(dijo)) otraEsta++;
+  }
   // Entre foto y foto, cinco cuadros grises: que no arrastre los votos de la anterior.
   for (let i = 0; i < 5; i++) { ws.send(Buffer.concat([Buffer.from([BIN_JPEG]), GRIS])); await espera(330); }
 }
 ws.close();
 console.log(`${esperado}: en ${n} escenas, el detector lo marcó en ${loVio}.`);
 console.log(`  El HUD dijo «${esperado}» en ${bien}, otra cosa en ${otra}, y se calló en ${callo}.`);
+if (otra) console.log(`  De «otra cosa»: ${otraEsta} están en la foto, ${otra - otraEsta - otraNoSeSabe} no, ${otraNoSeSabe} no se puede saber (no son clases de COCO).`);
 if (otra) console.log('  Otra cosa: ' + [...otras].sort((x, y) => y[1] - x[1]).map(([k, v]) => `${k} (${v})`).join(', '));
 if (conMedida) console.log(`  Con distancia en pantalla: ${conMedida}.`);
 console.log(`  Con un recuadro dibujado (nunca más de uno): ${conRecuadro}.`);

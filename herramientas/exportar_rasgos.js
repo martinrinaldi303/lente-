@@ -21,6 +21,21 @@
 //
 // --espejo agrega cada imagen de ENTRENAMIENTO también dada vuelta. A la prueba no
 // se le agrega nada: la prueba son fotos, no fotos inventadas.
+//
+// --aumentar N (3-oct-2026) agrega además cada foto de entrenamiento arruinada de N
+// formas (src/aumentos.js: poca luz, desenfoque, movimiento, cortada, torcida, JPEG
+// fuerte), y escribe aparte `prueba_arruinada.bin`: cada foto de prueba arruinada una
+// vez, para medir si la red aguanta lo que ve una webcam. Una foto de entrenamiento
+// ocupa entonces (espejo ? 2 : 1) + N filas seguidas: original, espejo, arruinadas.
+//
+// --propias <carpeta> suma las fotos de la cámara del usuario (src/muestras.js): las de
+// entrenamiento, REPETIDAS veces (son pocas y valen más que las de catálogo); las de
+// prueba van a `prueba_propias.bin`, aparte, para no cambiar la prueba de siempre. Una
+// foto de algo que la red no tiene, o de lo que NO es una clase, entra como «nada».
+//
+// En categorias.json, una carpeta puede ir como { "clase": "nada", "max": 15,
+// "soloEntrenamiento": true }: así entran las categorías de Caltech que la red no tiene
+// («otras cosas») como ejemplos de nada, sin tocar la prueba (--otros categorias_otros.json).
 
 import jpeg from 'jpeg-js';
 import { createHash } from 'node:crypto';
@@ -30,8 +45,11 @@ import { fileURLToPath } from 'node:url';
 import { EXTRACTORES, extractoresDisponibles } from '../src/extractores.js';
 import { escribirRasgos, leerRasgos } from '../src/formato_rasgos.js';
 import { espejar, regionCompleta } from '../src/imagen.js';
+import { arruinar, azarDe } from '../src/aumentos.js';
+import { Muestras } from '../src/muestras.js';
 
 const UNA_DE_CADA_N_A_PRUEBA = 5;   // 20 %
+const REPETIR_PROPIAS = 3;          // cada foto propia de entrenamiento entra tres veces
 
 function fnv1a(s) {
   let h = 0x811c9dc5;
@@ -52,11 +70,12 @@ function claveDeFoto(vectores) {
 
 // Devuelve el resumen. `maxPorCarpeta` acota las clases gigantes para que una sola
 // no arrastre a la red (en Caltech-256 hay carpetas de 80 imágenes y de 800).
-export async function exportar({ base, categorias, salida, maxPorCarpeta = Infinity, espejo = false,
+export async function exportar({ base, categorias, salida, maxPorCarpeta = Infinity, espejo = false, aumentar = 0, propias = null,
                                  extractores = Object.values(EXTRACTORES), registrar = () => {} }) {
   const carpetasFaltantes = [], listado = [];
-  for (const [carpeta, clase] of Object.entries(categorias)) {
-    try { listado.push({ carpeta, clase, archivos: readdirSync(join(base, carpeta)).filter(a => /\.jpe?g$/i.test(a)).sort() }); }
+  for (const [carpeta, valor] of Object.entries(categorias)) {
+    const { clase, max = maxPorCarpeta, soloEntrenamiento = false } = typeof valor === 'string' ? { clase: valor } : valor;
+    try { listado.push({ carpeta, clase, max, soloEntrenamiento, archivos: readdirSync(join(base, carpeta)).filter(a => /\.jpe?g$/i.test(a)).sort() }); }
     catch { carpetasFaltantes.push(carpeta); }
   }
   // Una clase sin ninguna carpeta en disco no entra: sería una salida de la red
@@ -73,26 +92,34 @@ export async function exportar({ base, categorias, salida, maxPorCarpeta = Infin
   const dirCache = join(salida, '_cache');
   mkdirSync(dirCache, { recursive: true });
   const marca = `max${Number.isFinite(maxPorCarpeta) ? maxPorCarpeta : 'todo'}_${espejo ? 'espejo' : 'simple'}`;
-  const archivoCache = (carpeta, e) => join(dirCache, `${carpeta.replace(/[^\w.-]+/g, '_').replace(/^[._]+/, '')}__${e.fuente}_${e.dim}__${marca}.bin`);
+  const archivoCache = (carpeta, e, otraMarca = marca) => join(dirCache, `${carpeta.replace(/[^\w.-]+/g, '_').replace(/^[._]+/, '')}__${e.fuente}_${e.dim}__${otraMarca}.bin`);
   const LADOS = ['entrenamiento', 'prueba'];
-  const leerCache = (carpeta, e) => {
+  const leerCache = (carpeta, e, otraMarca = marca) => {
     try {
-      const c = leerRasgos(archivoCache(carpeta, e));
+      const c = leerRasgos(archivoCache(carpeta, e, otraMarca));
       return c.fuente === e.fuente && c.dim === e.dim ? c.filas : null;
     } catch { return null; }
   };
   const fotos = [];
+  // Las arruinadas van en su propio cache: así agregar --aumentar no recalcula las
+  // originales. Tiene `aumentar` filas por foto de entrenamiento y una por foto de
+  // prueba, en el mismo orden que el cache de las originales.
+  const marcaDe = (tope, cual) => `max${Number.isFinite(tope) ? tope : 'todo'}_${cual}`;
 
-  for (const { carpeta, clase, archivos } of listado) {
+  for (const { carpeta, clase, archivos, max, soloEntrenamiento } of listado) {
     if (!archivos.length) continue;
     const dir = join(base, carpeta);
     const etiqueta = clases.indexOf(clase);
+    const tope = Math.min(max, maxPorCarpeta);
+    const marcaCarpeta = tope === maxPorCarpeta ? marca : marcaDe(tope, espejo ? 'espejo' : 'simple');
+    const marcaAumentos = marcaDe(tope, `aum${aumentar}`);
+    const elegidos = archivos.slice(0, tope);
 
-    const porExtractor = extractores.map(e => leerCache(carpeta, e));
+    const porExtractor = extractores.map(e => leerCache(carpeta, e, marcaCarpeta));
     const faltan = extractores.filter((_, k) => !porExtractor[k]);
     if (faltan.length) {
       const nuevas = faltan.map(() => []);
-      for (const archivo of archivos.slice(0, maxPorCarpeta)) {
+      for (const archivo of elegidos) {
         const aPrueba = vaAPrueba(`${carpeta}/${archivo}`);
         // Una imagen que no se puede leer no entra a NINGÚN extractor: si no, las
         // filas de uno dejarían de corresponder a las del otro.
@@ -105,21 +132,89 @@ export async function exportar({ base, categorias, salida, maxPorCarpeta = Infin
         }
       }
       faltan.forEach((e, k) => {
-        escribirRasgos(archivoCache(carpeta, e), { fuente: e.fuente, dim: e.dim, clases: LADOS, filas: nuevas[k] });
+        escribirRasgos(archivoCache(carpeta, e, marcaCarpeta), { fuente: e.fuente, dim: e.dim, clases: LADOS, filas: nuevas[k] });
         porExtractor[extractores.indexOf(e)] = nuevas[k];
       });
     }
     if (porExtractor.some(f => f.length !== porExtractor[0].length))
       throw new Error(`el cache de ${carpeta} quedó desparejo entre extractores: borrá ${dirCache}`);
 
-    // De a una foto: con espejo, una de entrenamiento son dos filas seguidas.
+    // Las arruinadas de esta carpeta (del cache, o se calculan ahora).
+    let aum = null;
+    if (aumentar > 0) {
+      aum = extractores.map(e => leerCache(carpeta, e, marcaAumentos));
+      const faltanAum = extractores.filter((_, k) => !aum[k]);
+      if (faltanAum.length) {
+        const nuevas = faltanAum.map(() => []);
+        for (const archivo of elegidos) {
+          const id = `${carpeta}/${archivo}`, aPrueba = vaAPrueba(id);
+          let img;
+          try { img = jpeg.decode(readFileSync(join(dir, archivo)), { useTArray: true, maxResolutionInMP: 40, maxMemoryUsageInMB: 512 }); }
+          catch { continue; }                   // la misma que se saltó al calcular las originales
+          const versiones = aPrueba ? [arruinar(img, azarDe(`prueba:${id}`))]
+            : Array.from({ length: aumentar }, (_, j) => arruinar(img, azarDe(`${j}:${id}`)));
+          for (const i of versiones) {
+            const vectores = await Promise.all(faltanAum.map(e => e.extraer(i, regionCompleta(i))));
+            vectores.forEach((vector, k) => nuevas[k].push({ etiqueta: aPrueba ? 1 : 0, vector }));
+          }
+        }
+        faltanAum.forEach((e, k) => {
+          escribirRasgos(archivoCache(carpeta, e, marcaAumentos), { fuente: e.fuente, dim: e.dim, clases: LADOS, filas: nuevas[k] });
+          aum[extractores.indexOf(e)] = nuevas[k];
+        });
+      }
+    }
+
+    // De a una foto: con espejo, una de entrenamiento son dos filas seguidas; con
+    // aumentos, más sus arruinadas (que están en el otro cache, en el mismo orden).
+    let a = 0;
     for (let k = 0; k < porExtractor[0].length;) {
-      const n = espejo && porExtractor[0][k].etiqueta === 0 ? 2 : 1;
-      fotos.push({ clase, etiqueta, lado: LADOS[porExtractor[0][k].etiqueta], filas: porExtractor.map(f => f.slice(k, k + n)),
+      const deEntrenamiento = porExtractor[0][k].etiqueta === 0;
+      const n = espejo && deEntrenamiento ? 2 : 1;
+      const extra = aum ? (deEntrenamiento ? aumentar : 1) : 0;
+      const filasExtra = aum ? aum.map(f => f.slice(a, a + extra)) : null;
+      a += extra;
+      if (!deEntrenamiento && soloEntrenamiento) { k += n; continue; }
+      fotos.push({ clase, etiqueta, lado: LADOS[porExtractor[0][k].etiqueta],
+                   filas: porExtractor.map((f, i) => [...f.slice(k, k + n), ...(deEntrenamiento && filasExtra ? filasExtra[i] : [])]),
+                   arruinada: !deEntrenamiento && filasExtra ? filasExtra.map(f => f[0]) : null,
                    clave: claveDeFoto(porExtractor.map(f => f[k].vector)) });
       k += n;
     }
+    if (aum && a !== aum[0].length) throw new Error(`el cache de aumentos de ${carpeta} no coincide con las fotos: borrá sus archivos _aum en ${dirCache}`);
     registrar(`${carpeta} → ${clase}: ${porExtractor[0].length} filas${faltan.length ? '' : ' (ya calculadas)'}`);
+  }
+
+  // Las fotos de la cámara del usuario (sin cache: son pocas y cambian seguido).
+  const filasPropias = extractores.map(() => []);
+  if (propias) {
+    const lista = new Muestras({ dir: propias }).listar();
+    resumen.propias = { entrenamiento: 0, prueba: 0, comoNada: 0 };
+    for (const m of lista) {
+      const clase = !m.noEs && clases.includes(m.clase) ? m.clase : 'nada';
+      if (!clases.includes(clase)) continue;
+      if (clase === 'nada' && m.clase !== 'nada') resumen.propias.comoNada++;
+      let img;
+      try { img = jpeg.decode(readFileSync(m.ruta), { useTArray: true, maxResolutionInMP: 40, maxMemoryUsageInMB: 512 }); }
+      catch { resumen.saltadas++; continue; }
+      const etiqueta = clases.indexOf(clase);
+      if (m.prueba) {
+        const vectores = await Promise.all(extractores.map(e => e.extraer(img, regionCompleta(img))));
+        vectores.forEach((vector, k) => filasPropias[k].push({ etiqueta, vector }));
+        resumen.propias.prueba++;
+        continue;
+      }
+      const versiones = [img, ...(espejo ? [espejar(img)] : []), ...Array.from({ length: aumentar }, (_, j) => arruinar(img, azarDe(`${j}:${m.archivo}`)))];
+      const filasDeFoto = extractores.map(() => []);
+      for (const i of versiones) {
+        const vectores = await Promise.all(extractores.map(e => e.extraer(i, regionCompleta(i))));
+        vectores.forEach((vector, k) => filasDeFoto[k].push({ vector }));
+      }
+      for (let r = 0; r < REPETIR_PROPIAS; r++)
+        fotos.push({ clase, etiqueta, lado: 'entrenamiento', filas: filasDeFoto, clave: `propia:${m.archivo}:${r}` });
+      resumen.propias.entrenamiento++;
+    }
+    registrar(`fotos propias: ${resumen.propias.entrenamiento} de entrenamiento (×${REPETIR_PROPIAS}), ${resumen.propias.prueba} de prueba, ${resumen.propias.comoNada} como «nada»`);
   }
 
   // Fotos repetidas, byte por byte (dan los mismos vectores). La base de piezas de PC
@@ -130,6 +225,7 @@ export async function exportar({ base, categorias, salida, maxPorCarpeta = Infin
   const clasesDe = new Map();
   for (const f of fotos) (clasesDe.get(f.clave) ?? clasesDe.set(f.clave, new Set()).get(f.clave)).add(f.clase);
   const vistas = new Set();
+  const arruinadas = extractores.map(() => []);
   resumen.ambiguas = 0; resumen.repetidas = 0;
   for (const f of fotos) {
     if (clasesDe.get(f.clave).size > 1) { resumen.ambiguas++; continue; }
@@ -138,6 +234,7 @@ export async function exportar({ base, categorias, salida, maxPorCarpeta = Infin
     f.filas.forEach((filasDeFoto, k) => {
       for (const fila of filasDeFoto) filas[k][f.lado].push({ etiqueta: f.etiqueta, vector: fila.vector });
     });
+    if (f.arruinada) f.arruinada.forEach((fila, k) => arruinadas[k].push({ etiqueta: f.etiqueta, vector: fila.vector }));
     resumen.porClase[f.clase][f.lado] += f.filas[0].length;
   }
 
@@ -146,14 +243,16 @@ export async function exportar({ base, categorias, salida, maxPorCarpeta = Infin
     mkdirSync(dir, { recursive: true });
     escribirRasgos(join(dir, 'entrenamiento.bin'), { fuente: e.fuente, dim: e.dim, clases, filas: filas[k].entrenamiento });
     escribirRasgos(join(dir, 'prueba.bin'),        { fuente: e.fuente, dim: e.dim, clases, filas: filas[k].prueba });
+    if (aumentar > 0) escribirRasgos(join(dir, 'prueba_arruinada.bin'), { fuente: e.fuente, dim: e.dim, clases, filas: arruinadas[k] });
+    if (propias) escribirRasgos(join(dir, 'prueba_propias.bin'), { fuente: e.fuente, dim: e.dim, clases, filas: filasPropias[k] });
   });
   resumen.entrenamiento = filas[0].entrenamiento.length;
   resumen.prueba = filas[0].prueba.length;
   // Con espejo, cada foto de entrenamiento ocupa dos filas seguidas. El entrenador
   // lo necesita saber para no repartir un par entre entrenamiento y validación.
-  resumen.filasPorFoto = espejo ? 2 : 1;
+  resumen.filasPorFoto = (espejo ? 2 : 1) + aumentar;
   writeFileSync(join(salida, 'exportacion.json'), JSON.stringify({
-    filasPorFoto: resumen.filasPorFoto, fuentes: resumen.fuentes, clases,
+    filasPorFoto: resumen.filasPorFoto, espejo, aumentar, propias: resumen.propias ?? null, fuentes: resumen.fuentes, clases,
     entrenamiento: resumen.entrenamiento, prueba: resumen.prueba,
   }, null, 2));
   return resumen;
@@ -162,15 +261,16 @@ export async function exportar({ base, categorias, salida, maxPorCarpeta = Infin
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
   const [base, archivoCategorias, salida, ...resto] = process.argv.slice(2);
   if (!base || !archivoCategorias || !salida) {
-    console.error('uso: node herramientas/exportar_rasgos.js <carpeta_base> <categorias.json> <carpeta_salida> [--max N] [--espejo]');
+    console.error('uso: node herramientas/exportar_rasgos.js <carpeta_base> <categorias.json> <carpeta_salida> [--max N] [--espejo] [--aumentar N] [--propias carpeta] [--otros categorias_otros.json]');
     process.exit(2);
   }
-  const iMax = resto.indexOf('--max');
-  const maxPorCarpeta = iMax >= 0 ? Number(resto[iMax + 1]) : Infinity;
+  const opcion = (nombre) => { const i = resto.indexOf(nombre); return i >= 0 ? resto[i + 1] : null; };
+  const maxPorCarpeta = opcion('--max') ? Number(opcion('--max')) : Infinity;
   if (!statSync(base).isDirectory()) { console.error(`${base} no es una carpeta`); process.exit(1); }
-  const categorias = JSON.parse(readFileSync(archivoCategorias, 'utf8'));
+  const categorias = { ...JSON.parse(readFileSync(archivoCategorias, 'utf8')), ...(opcion('--otros') ? JSON.parse(readFileSync(opcion('--otros'), 'utf8')) : {}) };
   const extractores = await extractoresDisponibles();
-  const r = await exportar({ base, categorias, salida, maxPorCarpeta, espejo: resto.includes('--espejo'), extractores, registrar: console.log });
+  const r = await exportar({ base, categorias, salida, maxPorCarpeta, espejo: resto.includes('--espejo'), aumentar: Number(opcion('--aumentar') ?? 0),
+                             propias: opcion('--propias'), extractores, registrar: console.log });
   console.log(`\n${r.entrenamiento} de entrenamiento y ${r.prueba} de prueba, en ${r.clases.length} clases`);
   console.log(`Una carpeta por extractor en ${salida}: ${r.fuentes.join(', ')}`);
   if (r.ambiguas || r.repetidas) console.log(`Fotos repetidas sacadas: ${r.ambiguas} en más de una clase, ${r.repetidas} copias en la misma`);

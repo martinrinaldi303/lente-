@@ -15,7 +15,7 @@ import { Vigia, renglonesDeAlerta } from './alertas.js';
 import { describirEscena, escenaParaLlm, metrosLegibles, paginasDeEscena } from './escena.js';
 import { LADO_MINIMO_CARA, Reconocedor } from './caras.js';
 import { CLASES_DEL_DETECTOR, detectarConZoom } from './detector.js';
-import { filtrarCorregidos, iou } from './correcciones.js';
+import { esCorregido, filtrarCorregidos, iou } from './correcciones.js';
 import { UMBRAL_DETECTOR } from './parecido.js';
 import { EXTRACTORES } from './extractores.js';
 import { fichaDe, paginasDe, paginasSueltas, resumenDeFicha } from './fichas.js';
@@ -25,6 +25,7 @@ import { colorDominante, regionCentral } from './imagen.js';
 import { DOCUMENTO_PERSONAL, paginar } from './leer.js';
 import { focalDesdeFovDiagonal, pesoEstimadoG, renglonDeTamano, tamanoDeCajaCm } from './medir.js';
 import { lugarDeQr } from './memoria.js';
+import { recorteJpeg } from './muestras.js';
 import { FUENTE as FUENTE_V0 } from './rasgos.js';
 import { CLASE_NADA, nombreDeClase } from './red_objetos.js';
 
@@ -35,7 +36,7 @@ const VOTOS_MINIMOS      = 3;
 const CONFIANZA_MINIMA   = 0.7;
 // Con los tres votantes y el voto pesado al cubo (55 clases, 1.284 fotos de prueba):
 // con 0,7 opina en el 91 % de las fotos y acierta 98 %; con 0,5, en el 96 % y acierta 97 %.
-const CONFIANZA_GENERAL  = 0.7;
+export const CONFIANZA_GENERAL  = 0.7;
 const MAX_PASOS          = 40;
 const MS_ENTRE_CUADROS_LLM = 1000;
 const MS_ESPERA_CAMARA   = 3000;
@@ -62,6 +63,18 @@ const CUADROS_ENTRE_VERIFICACIONES = 8;       // el mismo recuadro se vuelve a c
 const NO_LO_CONOZCO = ['No lo conozco', 'Preguntame «¿qué es?»', 'o enseñámelo'];
 const CONFIANZA_PARA_CORREGIR = 0.6;  // «ninguna es una persona»: los recuadros que se corrigen de una vez
 const MAX_CORRECCIONES_DE_UNA = 8;
+// CLIP (src/clip.js), medido con herramientas/medir_clip.js (ver PLAN.md, «Decimoquinta pasada»):
+//   · veta lo que dice la red si su primer nombre es OTRO con probabilidad ≥ CLIP_VETO_OTRO
+//     y al de la red le da menos de CLIP_VETO_RED;
+//   · nombra lo que nadie conoce («Parece: lata de aerosol») con ≥ CLIP_NOMBRAR;
+//   · nunca si en la mirada hay una persona, ni si CLIP mismo ve una (≥ CLIP_SOSPECHA_PERSONA).
+export const CLIP_VETO_OTRO = 0.5;
+export const CLIP_VETO_RED = 0.05;
+export const CLIP_NOMBRAR = 0.5;
+export const CLIP_SOSPECHA_PERSONA = 0.1;
+// Lo que no se puede sumar como nombre: CLIP sabe asociar nombres propios con caras
+// (gente famosa), y eso sería reconocer personas por la cara. Ver identificar.js.
+const NOMBRES_DE_GENTE = /(?<!\p{L})(person|people|man|men|woman|women|boy|girl|kid|child|baby|face|guy|lady|persona|personas|gente|hombre|mujer|chic[oa]s?|nen[ea]s?|beb[eé]|cara|señor[a]?|se[ñn]ora?|amig[oa]s?|novi[oa]|herman[oa]|pap[aá]|mam[aá]|hij[oa])(?!\p{L})/iu;
 
 // Lo que el LLM puede pedirle al cerebro. La voz es lo ÚNICO que hace el LLM: ver
 // es trabajo de la red propia, y por eso existe `que_veo`.
@@ -143,6 +156,11 @@ export const HERRAMIENTAS = [
     parameters: { type: 'OBJECT', properties: { nombre: { type: 'STRING' } }, required: ['nombre'] },
   },
   {
+    name: 'sumar_nombre',
+    description: 'Le enseña a las gafas el NOMBRE de una cosa sin mostrarla («sabé que existen los marcadores»): desde ahí, si ven algo que no conocen y se parece a eso, dicen «Parece: marcador». `nombre` en castellano y `en_ingles` su traducción (el reconocedor sólo entiende inglés). Nunca nombres de personas ni nada sobre gente: se niega.',
+    parameters: { type: 'OBJECT', properties: { nombre: { type: 'STRING' }, en_ingles: { type: 'STRING' } }, required: ['nombre', 'en_ingles'] },
+  },
+  {
     name: 'pasos_terminar',
     description: 'Cierra la guía y vuelve a la pantalla normal.',
     parameters: { type: 'OBJECT', properties: {} },
@@ -195,7 +213,8 @@ export class Sesion {
                 memoria = null, guias = [], leer = null, anotarEvaluacion = null, msEsperaFoto = MS_ESPERA_FOTO,
                 caras = null, conocidos = [], zoom = false,
                 correcciones = new Map(), positivos = new Map(), guardarCorreccion = null, olvidarCorrecciones = null,
-                ejemplos = null }) {
+                ejemplos = null, guardarMuestra = null, clip = null, vocabulario = null, guardarNombres = null,
+                negativos = new Map() }) {
     if (red.inDim !== extractorPersonal.dim || red.fuente !== extractorPersonal.fuente)
       throw new Error(`la red personal es ${red.clave} y el extractor es ${extractorPersonal.fuente}|${extractorPersonal.dim}`);
     this.enviarJson  = enviarJson;
@@ -215,6 +234,12 @@ export class Sesion {
     this.guias       = guias;              // src/guias.js: guías guardadas en disco
     this.leer        = leer;               // src/leer.js: leer texto con el LLM
     this.anotarEvaluacion = anotarEvaluacion;   // adónde va cada «acertó / se equivocó»
+    // Adónde va el recorte de cada prueba y de cada corrección, para entrenar y medir con
+    // fotos de esta cámara (src/muestras.js). null: no se guarda ninguna foto.
+    this.guardarMuestra = guardarMuestra;
+    // Lo que el usuario dijo que NO era («se equivocó: era una lata», de lo que se mostró
+    // como «celular»): clase → vectores. Vale desde ese momento, sin reentrenar nada.
+    this.negativos   = negativos;
     this.msEsperaFoto = msEsperaFoto;
     this.zoom        = zoom;               // mirar dos veces: el cuadro y el centro (ver detector.js)
     // Lo que el usuario le corrigió al detector (src/correcciones.js): clase → vectores.
@@ -226,10 +251,16 @@ export class Sesion {
     this.pistasCorreccion = [];             // dónde se corrigió algo en esta sesión (fracción del cuadro)
     this.ultimasDetecciones = null;         // lo que marcó el detector en el último cuadro, sin filtrar
     this.imgDetecciones = null;             // ese cuadro, ya decodificado: para corregir uno de sus recuadros
+    this.imgActual   = null;                // el último cuadro, ya decodificado
     // Para decir «no sé qué es» (src/parecido.js). Compara vectores del extractor
     // personal: si es otro, no sirve.
     this.ejemplos    = ejemplos?.fuente === extractorPersonal.fuente && ejemplos?.dim === extractorPersonal.dim ? ejemplos : null;
     this.votosNoSe   = [];                  // ¿había algo desconocido en la mirada? (últimos cuadros)
+    // CLIP (src/clip.js): compara lo que se ve con nombres escritos. Opcional.
+    this.clip        = clip && vocabulario ? clip : null;
+    this.vocabulario = this.clip ? vocabulario : null;
+    this.guardarNombres = guardarNombres;  // adónde van los nombres que suma el usuario
+    this.clipCache   = null;                // { clave, caja, cuadros, ranking }: una pasada cada tantos cuadros
     this.noSe        = null;                // { caja } si lo hay, de forma estable
     this.verificado  = null;                // el último recuadro del detector comparado con sus ejemplos
     // Personas conocidas (src/caras.js): sólo las que le dieron permiso a esta cuenta.
@@ -400,6 +431,11 @@ export class Sesion {
         return { ok: true };
       }
       case 'evaluar': return this._evaluar(msg);
+      case 'nombre':
+        this._sumarNombre({ nombre: msg.nombre, en_ingles: msg.en })
+          .catch(e => ({ ok: false, motivo: `No pude sumarlo: ${String(e.message).slice(0, 80)}` }))
+          .then(r => this._avisar(r.ok ? `Sumé «${r.nombre}»` : r.motivo));
+        return { ok: true, pendiente: true };
       default: return { ok: false, motivo: 'Mensaje desconocido' };
     }
   }
@@ -506,9 +542,11 @@ export class Sesion {
                                      tamano: this.tamano?.objeto === nombre ? renglonDeTamano(this.tamano) : undefined });
         if (this.veo) return { objeto: this.veo.nombre, confianza: Number(this.veo.confianza.toFixed(2)),
                                fuente: 'enseñado por el usuario', ...extra(this.veo.nombre) };
-        if (this.noSe) return { objeto: null, desconocido: true,
-                                nota: 'Hay algo en el centro de la mirada que no se parece a nada de lo que la red conoce. No adivines qué es: ' +
-                                      'ofrecé usar identificar (le pregunta al modelo con una foto), o que el usuario se lo enseñe.' };
+        if (this.noSe) return { objeto: null, desconocido: true, parece: this.noSe.parece?.es,
+                                nota: this.noSe.parece
+                                  ? `La red no lo conoce; otro modelo, sin entrenar, cree que parece «${this.noSe.parece.es}». Decilo como posibilidad y ofrecé identificar para estar seguros.`
+                                  : 'Hay algo en el centro de la mirada que no se parece a nada de lo que la red conoce. No adivines qué es: ' +
+                                    'ofrecé usar identificar (le pregunta al modelo con una foto), o que el usuario se lo enseñe.' };
         const quien = this.creo?.nombre === CLASE_PERSONA && this.hay?.nombre === CLASE_PERSONA ? this._quienEn(this.hay.caja) : null;
         if (quien) return { objeto: CLASE_PERSONA, quien, nota: 'Es alguien que le dio permiso a esta cuenta para que las gafas lo reconozcan: podés decir su nombre.' };
         if (this.creo) return { objeto: this.creo.nombre, confianza: Number(this.creo.confianza.toFixed(2)),
@@ -647,6 +685,9 @@ export class Sesion {
       case 'medir_objeto':
         return this._medirObjeto(args);
 
+      case 'sumar_nombre':
+        return this._sumarNombre(args);
+
       default:
         return { ok: false, motivo: `herramienta desconocida: ${nombre}` };
     }
@@ -682,16 +723,63 @@ export class Sesion {
   // clase? Cuesta una pasada de DINOv2, así que se recuerda la respuesta mientras sea
   // el mismo recuadro (misma clase, casi el mismo lugar) por unos cuadros.
   async _noSeParece(d, img) {
-    if (!this.ejemplos || d.nombre === CLASE_PERSONA || !this.ejemplos.tiene(d.nombre)) return false;
+    if (d.nombre === CLASE_PERSONA || !((this.ejemplos?.tiene(d.nombre)) || this.negativos.has(d.nombre))) return false;
     const v = this.verificado;
     if (v && v.nombre === d.nombre && v.cuadros < CUADROS_ENTRE_VERIFICACIONES && iou(v.caja, d.caja) >= 0.6) {
       v.cuadros++;
       return v.noSe;
     }
     const vector = await this.extractorPersonal.extraer(img, cajaEntera(d.caja, img));
-    const noSe = !this.ejemplos.conoce(vector, d.nombre, UMBRAL_DETECTOR);
+    const noSe = (this.ejemplos ? !this.ejemplos.conoce(vector, d.nombre, UMBRAL_DETECTOR) : false) || this._esNegativo(vector, d.nombre);
     this.verificado = { nombre: d.nombre, caja: d.caja, cuadros: 0, noSe };
     return noSe;
+  }
+
+  // Lo que dice CLIP de una región: el ranking de nombres. Cuesta ~50 ms, así que se
+  // recuerda mientras sea lo mismo (misma clave, casi el mismo lugar) por unos cuadros.
+  async _clipDe(img, region, clave) {
+    if (!this.clip) return null;
+    const c = this.clipCache;
+    if (c && c.clave === clave && c.cuadros < CUADROS_ENTRE_VERIFICACIONES && iou(c.caja, region) >= 0.6) { c.cuadros++; return c.ranking; }
+    const ranking = this.vocabulario.ranking(await this.clip.imagen(img, region), 500);
+    this.clipCache = { clave, caja: region, cuadros: 0, ranking };
+    return ranking;
+  }
+
+  // ¿Se parece mucho a algo que el usuario dijo que NO era `clase`, y más que a los
+  // ejemplos de verdad de esa clase? La misma cuenta que las correcciones al detector.
+  _esNegativo(vector, clase) {
+    const negs = this.negativos.get(clase);
+    return Boolean(negs?.length) && esCorregido(vector, negs, this.positivos.get(clase));
+  }
+
+  // ¿CLIP dice con claridad que es OTRA cosa que `nombre`?
+  _clipVeta(ranking, nombre) {
+    const top = ranking?.[0];
+    return Boolean(top) && top.es !== nombre && top.clase !== nombre && top.p >= CLIP_VETO_OTRO &&
+           this.vocabulario.probabilidadDe(ranking, nombre) < CLIP_VETO_RED;
+  }
+
+  // Lo que CLIP cree que es algo que las redes no conocen, o null. Nunca una persona.
+  _pareceDe(ranking) {
+    const top = ranking?.[0];
+    if (!top || top.p < CLIP_NOMBRAR || top.clase === CLASE_PERSONA || this.personaEnLaMirada) return null;
+    if (this.vocabulario.probabilidadDe(ranking, CLASE_PERSONA) >= CLIP_SOSPECHA_PERSONA) return null;
+    return { es: top.es, p: top.p };
+  }
+
+  // «Sabé que existen los marcadores»: un nombre nuevo para CLIP, de esta cuenta.
+  async _sumarNombre({ nombre, en_ingles: en } = {}) {
+    const es = String(nombre ?? '').replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 40);
+    const ingles = String(en ?? '').replace(/\s+/g, ' ').trim().toLowerCase().slice(0, 60);
+    if (!this.clip) return { ok: false, motivo: 'Para sumar nombres hace falta CLIP (modelos/clip-b32)' };
+    if (!es || !ingles) return { ok: false, motivo: 'Falta el nombre, o su traducción al inglés' };
+    if (NOMBRES_DE_GENTE.test(es) || NOMBRES_DE_GENTE.test(ingles))
+      return { ok: false, motivo: 'Nombres de personas no: las gafas no reconocen a la gente por la cara. Sí cosas («marcador», «llaves»).' };
+    await this.vocabulario.sumar(this.clip, { es, en: ingles, clase: null, propio: true });
+    this.clipCache = null;
+    this.guardarNombres?.(this.vocabulario.entradas.filter(e => e.propio).map(({ es, en }) => ({ es, en })));
+    return { ok: true, nombre: es, nota: 'Listo. Si ve algo que no conoce y se parece, va a decir «Parece: ' + es + '». No es tan seguro como enseñárselo con la cámara.' };
   }
 
   // «Esto no es una persona»: guarda cómo se ve ese recuadro, para no volver a marcarlo
@@ -762,6 +850,7 @@ export class Sesion {
     if (this.pistasCorreccion.length > 20) this.pistasCorreccion.shift();
     if (!this.correcciones.has(clase)) this.correcciones.set(clase, []);
     this.correcciones.get(clase).push(v);
+    this._guardarMuestra({ clase, noEs: true, origen: 'correccion', caja: c, img });
     await this.guardarCorreccion?.(clase, this.extractorPersonal.fuente, v);
   }
 
@@ -925,8 +1014,48 @@ export class Sesion {
       acierto, real,
     };
     this.anotarEvaluacion(fila);
-    this._mostrarUnRato(acierto ? 'Anotado: acertó' : `Anotado: era ${real}`, 2500);
-    return { ok: true, fila };
+    // La foto de lo que estaba en la mirada, con lo que ERA: es lo que más le enseña a la
+    // red general (src/muestras.js). De una persona, nunca.
+    const foto = this._guardarMuestra({ clase: real, mostrado: objeto?.nombre ?? null, origen: acierto ? 'acerto' : 'se_equivoco' });
+    // Lo que se mostró y no era: desde ya, eso no se nombra más así (_esNegativo).
+    if (!acierto && objeto && objeto.nombre !== real && objeto.nombre !== CLASE_PERSONA && !this.personaEnLaMirada) this._sumarNegativo(objeto.nombre);
+    const cola = foto ? ` · foto ${foto.prueba ? 'de prueba' : 'para entrenar'}` : '';
+    this._mostrarUnRato(`${acierto ? 'Anotado: acertó' : `Anotado: era ${real}`}${cola}`, 2500);
+    this._pintar();
+    return { ok: true, fila, foto };
+  }
+
+  // El vector de lo que está en la mirada, como ejemplo de lo que NO es `clase`.
+  _sumarNegativo(clase) {
+    const delDetector = Boolean(this.hay?.caja && this.hay.alCentro && this.imgDetecciones);
+    const img = delDetector ? this.imgDetecciones : this.imgActual;
+    if (!img) return;
+    Promise.resolve(this.extractorPersonal.extraer(img, delDetector ? cajaEntera(this.hay.caja, img) : regionCentral(img)))
+      .then(v => {
+        if (!this.negativos.has(clase)) this.negativos.set(clase, []);
+        this.negativos.get(clase).push(v);
+        this.verificado = null; this.votosGeneral = [];
+      })
+      .catch(e => console.warn(`[sesion] no se pudo guardar lo que no era: ${e.message}`));
+  }
+
+  // Guarda el recorte de lo que está en la mirada (o de `caja`, en el cuadro del detector).
+  // Devuelve { archivo, prueba } o null. Nada con una persona, salvo una corrección de algo
+  // que el usuario dice que NO es una persona (la ropa del placar).
+  _guardarMuestra({ clase, mostrado = null, origen, noEs = false, caja = null, img = null }) {
+    if (!this.guardarMuestra || !clase) return null;
+    if (!noEs && (clase === CLASE_PERSONA || mostrado === CLASE_PERSONA || this.personaEnLaMirada)) return null;
+    let foto = img, recuadro = caja, delDetector = Boolean(caja);
+    if (!foto) {
+      // Lo que se está mirando: el recuadro del detector si contiene el centro, si no el
+      // recuadro del centro (el mismo que miran las redes).
+      delDetector = Boolean(this.hay?.caja && this.hay.alCentro && this.imgDetecciones);
+      foto = delDetector ? this.imgDetecciones : this.imgActual;
+      recuadro = delDetector ? this.hay.caja : foto ? regionCentral(foto) : null;
+    }
+    if (!foto) return null;
+    try { return this.guardarMuestra({ clase, mostrado, origen, noEs, jpeg: recorteJpeg(foto, recuadro, { margen: delDetector ? 0.08 : 0 }) }); }
+    catch (e) { console.warn(`[sesion] no se pudo guardar la foto: ${e.message}`); return null; }
   }
 
   cerrar() {
@@ -965,10 +1094,13 @@ export class Sesion {
     }
 
     const img = jpeg.decode(cuadro, { useTArray: true, maxResolutionInMP: 2, maxMemoryUsageInMB: 64 });
+    this.imgActual = img;
     // Un código QR se busca en el cuadro ENTERO, no sólo en el recuadro: la persona
     // lo muestra donde puede. Si se deja de ver, la tarjeta queda unos segundos.
     // Un QR que dice LUGAR:cocina no es una tarjeta: es el cartel del lugar (memoria.js).
-    const qr = leerQr(img);
+    // Un cuadro sí y uno no (~60 ms cada vez): la tarjeta igual queda 10 cuadros en pantalla.
+    this.cuadrosVistos = (this.cuadrosVistos ?? 0) + 1;
+    const qr = this.cuadrosVistos % 2 || this.tarjeta ? leerQr(img) : null;
     const lugar = lugarDeQr(qr);
     if (lugar && this.memoria) {
       const antes = this.memoria.lugarActual();
@@ -1034,10 +1166,21 @@ export class Sesion {
       if (this.cerrada) return;
       // Segura no quiere decir que sea eso: si no se parece a sus ejemplos de verdad, es
       // algo que la red no conoce (parecido.js). A «persona» no se la descarta así.
-      if (general && general.confianza >= CONFIANZA_GENERAL && general.nombre !== CLASE_PERSONA && general.nombre !== CLASE_NADA &&
-          this.ejemplos && !this.ejemplos.conoce(vector, general.nombre)) {
+      const segura = general && general.confianza >= CONFIANZA_GENERAL && general.nombre !== CLASE_PERSONA && general.nombre !== CLASE_NADA;
+      if (segura && ((this.ejemplos && !this.ejemplos.conoce(vector, general.nombre)) || this._esNegativo(vector, general.nombre))) {
         general = { ...general, desconocido: true };
         hayDesconocido = { caja: null };
+      }
+      // La tercera opinión: CLIP, mirando lo mismo, ¿dice claramente otra cosa? (Y si
+      // ya es desconocido, CLIP dice qué le parece.)
+      if (segura && this.clip) {
+        const ranking = await this._clipDe(img, region, `centro:${general.nombre}`);
+        if (this.cerrada) return;
+        if (!general.desconocido && this._clipVeta(ranking, general.nombre)) {
+          general = { ...general, desconocido: true };
+          hayDesconocido = { caja: null };
+        }
+        if (hayDesconocido) hayDesconocido.ranking = ranking;
       }
       this.ultimoGeneral = general;
       this.votosGeneral.push(general && !general.desconocido && general.confianza >= CONFIANZA_GENERAL ? general : null);
@@ -1053,7 +1196,12 @@ export class Sesion {
     if (this.detector) {
       // Con zoom, el detector mira además el centro con todo su detalle: ve lo de la
       // mirada hasta el doble de lejos (detector.js, detectarConZoom).
-      detecciones = this.zoom ? await detectarConZoom(this.detector, img) : await this.detector.detectar(img);
+      // El zoom es una pasada más del detector (~180 ms con D-FINE): se hace sólo si en el
+      // centro todavía no hay nada seguro. Si ya lo hay, mirar de cerca no cambia lo que se
+      // nombra, y así el cuadro entra en los 500 ms que da la cámara (3-oct-2026).
+      detecciones = await this.detector.detectar(img);
+      if (this.zoom && !detecciones.some(d => d.confianza >= 0.9 && contieneCentro(d.caja, { x0: img.width / 2, y0: img.height / 2, ancho: 0, alto: 0 })))
+        detecciones = await detectarConZoom(this.detector, img, { entero: detecciones });
       if (this.cerrada) return;
       this.ultimasDetecciones = detecciones;
       this.imgDetecciones = img;
@@ -1076,7 +1224,8 @@ export class Sesion {
       // pantalla, ni en la escena, ni en la memoria.
       for (let intento = 0; principal && intento < 2 && await this._noSeParece(principal, img); intento++) {
         if (this.cerrada) return;
-        hayDesconocido = { caja: principal.caja };
+        hayDesconocido = { caja: principal.caja, ranking: this.clip ? await this._clipDe(img, principal.caja, `caja:${principal.nombre}`) : null };
+        if (this.cerrada) return;
         const fuera = principal;
         candidatas = candidatas.filter(d => d !== fuera);
         detecciones = detecciones.filter(d => d !== fuera);
@@ -1142,8 +1291,10 @@ export class Sesion {
     // (una persona no cuenta: casi siempre interesa lo que tiene en la mano).
     this.votosNoSe.push(hayDesconocido);
     if (this.votosNoSe.length > VOTOS) this.votosNoSe.shift();
-    this.noSe = this.votosNoSe.filter(Boolean).length >= VOTOS_MINIMOS && !this.veo && (!this.creo || this.creo.nombre === CLASE_PERSONA)
+    const noSe = this.votosNoSe.filter(Boolean).length >= VOTOS_MINIMOS && !this.veo && (!this.creo || this.creo.nombre === CLASE_PERSONA)
       ? this.votosNoSe.findLast(Boolean) : null;
+    // Lo que le parece a CLIP, si está claro (y no es una persona).
+    this.noSe = noSe ? { caja: noSe.caja, parece: this._pareceDe(noSe.ranking) } : null;
     if (detecciones) this._mandarCajas(detecciones, img);
     this._avisarAnimal(this.veo ?? this.creo);
 
@@ -1186,7 +1337,8 @@ export class Sesion {
     } else if (this.noSe?.caja) {
       const c = this.noSe.caja, redondo = (k) => Math.round(c[k] / PASO_CAJA_PX) * PASO_CAJA_PX;
       this.cajaSuave = null;
-      mirado = { x0: redondo('x0'), y0: redondo('y0'), ancho: redondo('ancho'), alto: redondo('alto'), nombre: NO_LO_CONOZCO[0], desconocido: true };
+      mirado = { x0: redondo('x0'), y0: redondo('y0'), ancho: redondo('ancho'), alto: redondo('alto'),
+                 nombre: this.noSe.parece ? `Parece: ${this.noSe.parece.es}` : NO_LO_CONOZCO[0], desconocido: true };
     } else {
       this.cajaSuave = null;
     }
@@ -1279,8 +1431,14 @@ export class Sesion {
       lineas = this.tarjeta.lineas;
     } else if (this.texto === TEXTO_REPOSO && this.noSe) {
       // Algo en la mirada que no se parece a nada conocido: mejor decirlo que inventar.
-      titulo = NO_LO_CONOZCO[0];
-      lineas = NO_LO_CONOZCO.slice(1);
+      // Si CLIP cree saber qué es, se dice como posibilidad.
+      if (this.noSe.parece) {
+        titulo = this.noSe.parece.es.slice(0, COLS);
+        lineas = ['Parece; no es seguro', 'Preguntame «¿qué es?»'];
+      } else {
+        titulo = NO_LO_CONOZCO[0];
+        lineas = NO_LO_CONOZCO.slice(1);
+      }
     } else if (this.texto === TEXTO_REPOSO && (this.veo || this.creo)) {
       // La pantalla está libre y hay algo reconocido: se muestran sus características.
       // Primera página: dos renglones del TIPO de aparato (fichas.js) y uno medido en

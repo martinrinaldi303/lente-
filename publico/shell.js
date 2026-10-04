@@ -109,7 +109,7 @@
     const u = yo.usuario;
     $('[data-nombre]').textContent = u.nombre;
     $('[data-avatar]').textContent = (u.nombre.trim()[0] || '·').toUpperCase();
-    $('[data-motor]').textContent = [salud.detector && 'YOLOS-tiny', salud.red_general && (salud.red_general.votantes.some(v => v.fuente.startsWith('dino')) ? 'DINOv2' : 'redes propias')].filter(Boolean).join(' + ') || 'sin detector';
+    $('[data-motor]').textContent = [salud.detector && (salud.detector_nombre ?? 'YOLOS-tiny'), salud.red_general && (salud.red_general.votantes.some(v => v.fuente.startsWith('dino')) ? 'DINOv2' : 'redes propias')].filter(Boolean).join(' + ') || 'sin detector';
     $('[data-llm]').textContent = salud.llm === 'gemini' ? 'Gemini Live' : salud.llm === 'deepseek' ? 'DeepSeek' : 'apagado';
     $('[data-version]').textContent = salud.base ? 'MySQL ON' : 'MySQL OFF';
     const conectados = yo.anteojos.filter(a => a.conectado).length;

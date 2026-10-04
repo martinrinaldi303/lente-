@@ -45,7 +45,7 @@ Para prender la voz: copiar `.env.example` a `.env` y poner una clave de DeepSee
 
 ### Probado y sin probar
 
-- **Probado:** las pruebas en frío (156 al 3-oct-2026; con MySQL prendido no se saltea
+- **Probado:** las pruebas en frío (166 al 4-oct-2026; con MySQL prendido no se saltea
   ninguna, y las de la base crean y borran sus propias filas); el emulador contra el servidor real, enseñando
   y reconociendo tres objetos con cuadros sintéticos; el rechazo por token y por
   origen; que el servidor no arranque abierto a la red sin token; que las redes en
@@ -1410,6 +1410,156 @@ Pruebas nuevas en `pruebas/correcciones.test.js` para cada arreglo del cerebro.
 - «¿Qué es?» sobre una taza con un mastín dibujado contestó «perro, peligro medio»: el
   modelo describió el dibujo. Es el LLM, no el código.
 
+## Decimoquinta pasada: entrenar para que detecte bien — 3 y 4-oct-2026
+
+Martín pidió hacer las siete mejoras de entrenamiento que se le propusieron, y bajar lo
+que hiciera falta. Aprobó bajar D-FINE (S y N, 57 MB) y CLIP ViT-B/32 (155 MB). No hizo
+falta bajar fotos: lo que faltaba son las de SU cámara, y ésas se juntan usándolo.
+
+| Qué | Dónde | Resultado medido |
+|---|---|---|
+| 1 · Fotos de tu cámara | `src/muestras.js`; «Acertó / Se equivocó» y las correcciones guardan el recorte en `datos/propias/` | Anda; todavía hay 0 fotos. Nunca de personas |
+| 2 · Prueba fija con esas fotos | una de cada tres, por el nombre del archivo; `npm run medir-propias` | Espera las fotos |
+| 3 · Fotos arruinadas a propósito | `src/aumentos.js`, `exportar_rasgos.js --aumentar 2` | Con fotos arruinadas: 77,5 % → 80,4 % |
+| 4 · Ejemplos de lo que NO es | 72 categorías de Caltech como «nada» (`categorias_otros.json`); los «se equivocó» como negativos al instante | La red sola inventa 19,4 % → 13,2 % con cosas que no conoce |
+| 5 · Un detector mejor | D-FINE-S (`src/detector.js`) | En COCO: 72 % → 85 % de lo seguro es cierto, 56 % → 68 % encontrado. En la pantalla, empate |
+| 6 · Comparar contra texto | CLIP (`src/clip.js`, `src/vocabulario_clip.js`) | «Parece: …» acierta 96 % cuando habla; como veto, poco |
+| 7 · Un umbral por clase | detector: `calibrar_detector.js`; red general: `umbrales_general.js` | Detector: sí. Red general: no mejora, no se usa |
+
+### 3 y 4 · La red general nueva
+
+Cada foto de entrenamiento entra cuatro veces: tal cual, espejada y arruinada de dos
+formas (dos defectos por vez entre poca luz con ruido, desenfoque, movimiento, cortada,
+torcida hasta 25°, JPEG muy comprimido, otra luz). 79.860 filas, y con las «otras cosas»
+83.292. La prueba de siempre no cambia (4.998 fotos); aparte, `prueba_arruinada.bin` con
+cada foto de prueba arruinada una vez. Las 141 categorías de Caltech que la red no tiene
+se partieron en dos por sorteo fijo: 72 entran como «nada» (15 fotos cada una, sólo al
+entrenamiento) y 69 quedan para medir cuánto inventa con cosas desconocidas.
+
+| Red general (129 clases) | Prueba (4.998) | Arruinadas | ≥ 0,7: opina / acierta | Inventa (desconocidas, ≥ 0,7) |
+|---|---|---|---|---|
+| La de antes | 89,9 % ± 0,8 | 77,5 % ± 1,2 | 90 % / 95 % | 21,6 % |
+| + arruinadas | 89,5 % ± 0,9 | 80,4 % ± 1,1 | 86 % / 96 % | 19,4 % |
+| **+ otras cosas (la que quedó)** | **88,8 % ± 0,9** | **80,2 % ± 1,1** | **87 % / 95 %** | **13,2 %** |
+
+Con lo que de verdad decide la pantalla (red ≥ 0,7 + «parecido» + CLIP), sobre 1.524
+fotos de clases conocidas y 821 de las 69 categorías apartadas:
+
+| | Nombra lo que conoce (acierta) | Inventa con lo que no conoce |
+|---|---|---|
+| Antes | 83,3 % (97,3 %) | 5,1 % |
+| Ahora | 82,6 % (97,1 %) | 4,0 % |
+
+Es decir: casi lo mismo con fotos limpias, mejor con fotos feas, y un quinto menos de
+inventos. La de antes quedó en `datos/respaldo_redes_129/`.
+
+Para repetirlo (la primera vez, unas dos horas; después, el cache sólo calcula lo nuevo):
+
+```bash
+node herramientas/exportar_rasgos.js datos/256_ObjectCategories herramientas/categorias.json datos/rasgos --max 200 --espejo --aumentar 2 --propias datos/propias --otros herramientas/categorias_otros.json
+```
+
+```bash
+npm run entrenar
+```
+
+### 1 y 2 · Tus fotos
+
+Al marcar «✓ Acertó» o «✗ Se equivocó: era X» en Visión se guarda el recorte de lo que
+estaba en la mirada (el recuadro del detector si contiene el centro, si no el recuadro del
+centro) en `datos/propias/u<cuenta>/<clase>/`, y en `indice.jsonl` qué mostraba la
+pantalla. Una corrección («eso no es una persona») lo guarda en `no_es/<clase>/`. Una de
+cada tres va a la prueba fija y nunca se entrena con ella; las otras entran al reentrenar
+con `--propias datos/propias`, tres veces cada una (son pocas y valen más). Algo que la red
+no tiene («lata de aerosol») entra como «nada». Visión muestra cuántas hay.
+
+Lo que se marca como «se equivocó» vale desde ese momento, sin reentrenar: el vector de
+lo que se mostró queda como ejemplo de lo que NO es esa clase (`_esNegativo`, la misma
+cuenta que las correcciones al detector), y la pantalla deja de nombrarlo así.
+
+**Nunca personas:** si lo marcado es «persona», o hay una persona en la mirada, no se
+guarda foto (la prueba se anota igual).
+
+⚠️ **Hoy hay 0 fotos propias.** Ésta es la mejora que más puede subir el acierto con su
+cámara, y depende de usarlo: unas 30 por clase para empezar a leer `npm run
+medir-propias`, y reentrenar cuando haya algunas decenas.
+
+### 5 y 7 · El detector
+
+`herramientas/calibrar_detector.js`: con las 5.000 fotos de validación de COCO, las de id
+par calibran y las impares miden. Para cada clase, el puntaje desde el que lo que marca
+es cierto el 85 % de las veces pasa a valer 0,9 (`recalibrar` en `detector.js`), así todo
+lo demás del cerebro sigue usando 0,9 como «seguro». Queda en
+`estado/umbrales_detector_dfine-s.json` (va al repo).
+
+| Sobre 2.463 fotos que no calibraron | De lo seguro, cierto | Objetos ≥ 48 px encontrados | La mirada: opina / acierta | ms por cuadro |
+|---|---|---|---|---|
+| YOLOS-tiny, 0,9 para todo (lo de antes) | 72,4 % | 56,5 % | 86 % / 84 % | 112 |
+| D-FINE-S, un umbral para todo | 85,7 % | 70,5 % | 92 % / 90 % | 144 |
+| **D-FINE-S, uno por clase** | **85,4 %** | **68,1 %** | **91 % / 92 %** | 144 |
+
+(Medido YOLOS con 2.000 fotos, D-FINE con 5.000.) D-FINE-N, el chico, no sirvió: con
+ningún umbral llega al 85 %; se borró. Uno por clase contra uno solo es casi un empate;
+quedó por clase porque lo que elige la mirada acierta un poco más. Con menos de 15
+recuadros de una clase, vale el general. Persona: 0,59 crudo; celular, 0,82.
+
+Lo chico en el centro (12 a 64 px): YOLOS 21 % sin zoom y 36 % con zoom; D-FINE 38 % sin
+zoom y 47 % con zoom.
+
+**En escenas reales por el servidor** (`probar_escenas.js`, 40 fotos de celular, taza y
+botella, las mismas para los dos), lo que dijo la pantalla:
+
+| | Lo buscado | Otra cosa que está en la foto | Algo que no está | Se calló |
+|---|---|---|---|---|
+| YOLOS | 34 | 67 | 3 | 14 |
+| D-FINE-S | 34 | 67 | 4 | 13 |
+
+**Empate en la pantalla.** Lo que elige la mirada depende también de la red general y de
+la permanencia, y ahí D-FINE no cambia nada. Donde sí suma es en todo lo que mira el
+cuadro entero (la escena, la memoria, el aviso de vehículos): encontró lo buscado en 98
+escenas, YOLOS en 92. Se puede volver a YOLOS con `DETECTOR=yolos` en `.env`.
+
+**La velocidad.** Con D-FINE y el zoom siempre, un cuadro tardaba 527 ms, y la cámara
+manda uno cada 500. Ahora el zoom se hace sólo si en el centro todavía no hay nada seguro, y
+el QR se busca un cuadro sí y uno no: 387 ms de promedio (`medir_velocidad.js`).
+
+**La red general, un umbral por clase: no.** Con ~20 fotos de prueba por clase el umbral
+de cada una es ruido: pidiendo 95 %, opinaba 84 % y acertaba 96,5 % (antes 89 % / 95 %); con
+90 % u 85 %, igual que un solo umbral. Queda la herramienta para cuando haya fotos propias.
+
+### 6 · CLIP
+
+Compara el recorte con 395 nombres escritos (las 129 clases, las 80 del detector y ~200
+cosas de todos los días: lata de aerosol, marcador, llaves, mate, alicate…). Sólo en
+inglés: cada nombre lleva su traducción. Tres usos:
+
+- **«Parece: …».** Si la red y el detector no conocen lo que se mira y CLIP le da ≥ 50 % a
+  un nombre, la pantalla dice ese nombre con «Parece; no es seguro». De las desconocidas
+  cuyo nombre está en la lista, nombra 63 % y acierta 96 %. De todas las desconocidas, en el
+  5 % dice una clase que la red tiene (un error).
+- **Tercera opinión.** Si CLIP le da ≥ 50 % a otra cosa y < 5 % a lo que dijo la red, no
+  se nombra. Suma poco: 5,5 % → 5,0 % de inventos con la red anterior. Cuesta ~35 ms cada 8
+  cuadros.
+- **Nombres nuevos sin fotos.** «Sabé que existen los marcadores» (herramienta
+  `sumar_nombre`, o el formulario «Nombre nuevo» de Visión, con su traducción): desde ahí
+  puede decir «Parece: marcador». Por cuenta, en `estado/nombres_u<cuenta>.json`.
+
+**Nunca personas.** CLIP sabe asociar nombres propios con caras de gente famosa: eso
+sería reconocer personas. Por eso no se nombra nada si hay una persona en la mirada (para
+el detector o las redes) ni si CLIP mismo le da ≥ 10 % a «persona», y `sumar_nombre`
+rechaza todo lo que suene a gente («mi amigo», «nena», «hombre»…). El vocabulario no tiene
+nada sobre personas (lo revisa una prueba).
+
+CLIP solo, sobre las clases conocidas, acierta 61,5 %: es peor que la red, no la reemplaza.
+
+**Probado:** 166 pruebas en frío, ninguna salteada con MySQL prendido (las nuevas en
+`pruebas/entrenamiento.test.js`). Con el cerebro de verdad: la armónica y los dados, «No
+lo conozco»; la taza, bien; cada prueba guardó su foto; «mi amigo» rechazado y «marcador»
+sumado. Lo que esas pruebas anotaron se borró.
+
+⚠️ **Sin probar:** todo con la cámara de Martín. Los números de arriba son con fotos de
+Caltech y COCO (y arruinadas a mano); lo de su casa lo va a decir `npm run medir-propias`.
+
 ## Desarmar, código y matemática — bases encontradas el 1-oct-2026
 
 Ninguna de las tres se bajó. Lo que hay que saber antes: **las redes de MIIA
@@ -1444,8 +1594,9 @@ Lo que sí se puede hacer propio y sin entrenar un modelo de lenguaje:
 
 ## Lo que sigue
 
-1. Probar el emulador con la webcam real y objetos reales, anotando con «Acertó / Se
-   equivocó», y correr `npm run pruebas-reales`.
+1. Usarlo con la webcam real marcando «Acertó / Se equivocó»: cada marca guarda una foto.
+   Con unas 30 por clase, `npm run medir-propias`; con algunas decenas, reentrenar con
+   `--propias datos/propias` (ver la decimoquinta pasada).
 2. Prender la voz con una clave nueva y probar una guía de desarme y «Leer texto».
 3. Comparar las guías de primeros auxilios con la guía oficial de Cruz Roja Argentina.
 4. Comprar el XIAO, el OLED y el VL53L1X; cargar `firmware/gafas_xiao` y probarlo.

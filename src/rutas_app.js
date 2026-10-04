@@ -9,6 +9,7 @@
 //   GET    /api/objetos                 lo que la memoria vio, del más reciente al más viejo
 //   GET    /api/objetos/donde?nombre=…  «¿dónde dejé…?»
 //   DELETE /api/objetos                 vacía TU memoria de objetos
+//   GET    /api/muestras                cuántas fotos tuyas hay para entrenar y de prueba, por clase
 
 import express from 'express';
 import { ErrorDeCuenta, leerCookie } from './cuentas.js';
@@ -39,7 +40,7 @@ export function filtrosDeHistorial({ periodo = 'todo', min, q } = {}, usuarioId)
   return { donde: donde.join(' AND '), valores };
 }
 
-export function rutasDeApp({ cuentas, memoriaDe }) {
+export function rutasDeApp({ cuentas, memoriaDe, muestras = null }) {
   const r = express.Router();
   const responder = (res, estado, cuerpo) => res.status(estado).json(cuerpo);
 
@@ -117,6 +118,10 @@ export function rutasDeApp({ cuentas, memoriaDe }) {
   r.delete('/objetos', conUsuario(async (req, res, usuario) => {
     memoriaDe(usuario.id).vaciar();
     responder(res, 200, { ok: true });
+  }));
+
+  r.get('/muestras', conUsuario(async (req, res, usuario) => {
+    responder(res, 200, { por_clase: muestras ? muestras.resumen(usuario.id) : {} });
   }));
 
   return r;

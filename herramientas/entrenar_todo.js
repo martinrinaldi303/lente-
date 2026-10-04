@@ -79,11 +79,24 @@ export function entrenarTodo({ dirRasgos, dirEstado, epocas = 30, lr = 0.01, fue
   registrar('\n  si sólo opina cuando está seguro (voto por validación):');
   for (const u of rPesado.umbrales)
     registrar(`    confianza ≥ ${u.umbral}: opina en ${(100 * u.opina / rPesado.n).toFixed(0)}% de las fotos, acierta ${u.opina ? (100 * u.acierta / u.opina).toFixed(0) : '—'}%`);
+  // Las pruebas aparte, si están: las mismas fotos arruinadas (¿aguanta lo que ve una
+  // webcam?) y las fotos de la cámara del usuario (lo que de verdad importa).
+  const extras = {};
+  for (const [archivo, nombre] of [['prueba_arruinada.bin', 'arruinadas'], ['prueba_propias.bin', 'propias']]) {
+    if (!extractores.every(e => existsSync(join(dirRasgos, e.fuente, archivo)))) continue;
+    const otras = extractores.map(e => leerRasgos(join(dirRasgos, e.fuente, archivo)));
+    if (!otras[0].filas.length) continue;
+    const r = medirConjunto(pesado, otras);
+    extras[nombre] = r;
+    registrar(`\n  fotos de prueba ${nombre}: ${r.n} — acierta ${(100 * r.acierto).toFixed(1)}% (± ${(100 * r.margen95).toFixed(1)})` +
+              r.umbrales.map(u => ` · ≥${u.umbral}: opina ${(100 * u.opina / r.n).toFixed(0)}%, acierta ${u.opina ? (100 * u.acierta / u.opina).toFixed(0) : '—'}%`).join(''));
+  }
   // Queda escrito para quien lo necesite sin volver a medir (el documento Word).
   writeFileSync(join(dirEstado, 'medicion_conjunto.json'), JSON.stringify({
     cuando: new Date().toISOString(), clases: pesado.clases.length, fotos_de_prueba: rPesado.n, azar, filas, umbrales: rPesado.umbrales,
+    ...(Object.keys(extras).length ? { otras_pruebas: Object.fromEntries(Object.entries(extras).map(([k, r]) => [k, { n: r.n, acierto: r.acierto, margen95: r.margen95, umbrales: r.umbrales }])) } : {}),
   }, null, 2));
-  return { azar, filas, pesado: rPesado, parejo: rParejo };
+  return { azar, filas, pesado: rPesado, parejo: rParejo, extras };
 }
 
 if (process.argv[1] === fileURLToPath(import.meta.url)) {
